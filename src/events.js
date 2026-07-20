@@ -2,8 +2,32 @@ import { state, saveState, getCartRestaurant, getBillingDetails } from "./state.
 import { navigateTo, renderHeader, renderRestaurants, renderCartDrawer, renderProfile, renderOrderTracking, renderRestaurantWorkspace } from "./render.js";
 import { createCustomerOnServer, createRestaurantOnServer, createMenuItemOnServer, updateCustomerProfileOnServer, updateRestaurantPasswordOnServer, createOrderOnServer, createReviewOnServer, updateOrderStatusOnServer } from "./api.js";
 
+import { 
+  resetAuthModalViews, 
+  performLogout, 
+  handleForgotLink, 
+  handleForgotForm, 
+  handleResetForm, 
+  handleLoginForm, 
+  togglePasswordVisibility, 
+  handleCustomerRegister, 
+  handleRestaurantRegister 
+} from "./controllers/auth.js";
 
+import { 
+  setPaymentMethod, 
+  processPayment, 
+  finalizeOrderPayment, 
+  handleCartCheckout, 
+  handleConflictConfirm 
+} from "./controllers/cart.js";
 
+import { 
+  handleRestTabClick, 
+  handleRestAddDish, 
+  handleRestPasswordBtnClick, 
+  handleRestPasswordChange 
+} from "./controllers/restaurant.js";
 
 const FORMSPREE_URL = "https://formspree.io/f/mqerppob";
 
@@ -15,220 +39,6 @@ function sendToFormspree(formType, data) {
   }).catch(err => console.warn("Formspree submission failed (non-blocking):", err));
 }
 
-
-export function resetAuthModalViews() {
-  const loginForm = document.getElementById("auth-login-form");
-  const forgotForm = document.getElementById("auth-forgot-form");
-  const resetForm = document.getElementById("auth-reset-form");
-
-  if (loginForm) {
-    loginForm.classList.remove("d-none");
-    loginForm.classList.add("d-flex");
-  }
-  if (forgotForm) {
-    forgotForm.classList.add("d-none");
-    forgotForm.classList.remove("d-flex");
-  }
-  if (resetForm) {
-    resetForm.classList.add("d-none");
-    resetForm.classList.remove("d-flex");
-  }
-
-  const passwordInput = document.getElementById("auth-password-input");
-  if (passwordInput) passwordInput.value = "";
-  
-  const errorMsgEl = document.getElementById("auth-error-msg");
-  errorMsgEl?.classList.add("d-none");
-
-  const forgotEmail = document.getElementById("auth-forgot-email");
-  const forgotPhone = document.getElementById("auth-forgot-phone");
-  const forgotError = document.getElementById("auth-forgot-error");
-  if (forgotEmail) forgotEmail.value = "";
-  if (forgotPhone) forgotPhone.value = "";
-  forgotError?.classList.add("d-none");
-
-  const resetPass = document.getElementById("auth-reset-password");
-  if (resetPass) resetPass.value = "";
-}
-
-
-export function setPaymentMethod(method) {
-  state.selectedPaymentMethod = method;
-
-  const methods = ['card', 'upi', 'cod'];
-  methods.forEach(m => {
-    const btn = document.getElementById(`pay-select-${m}`);
-    const form = document.getElementById(`pay-form-${m}`);
-    if (btn) {
-      if (m === method) {
-        btn.classList.add('btn-danger', 'bg-danger-subtle', 'border-danger', 'text-danger', 'fw-bold');
-        btn.classList.remove('btn-light', 'text-secondary');
-      } else {
-        btn.classList.remove('btn-danger', 'bg-danger-subtle', 'border-danger', 'text-danger', 'fw-bold');
-        btn.classList.add('btn-light', 'text-secondary');
-      }
-    }
-    if (form) {
-      if (m === method) {
-        form.classList.remove('d-none');
-        form.classList.add('d-flex');
-      } else {
-        form.classList.add('d-none');
-        form.classList.remove('d-flex');
-      }
-    }
-  });
-
-  const cardInputs = ['card-name-input', 'card-number-input', 'card-expiry-input', 'card-cvv-input'];
-  cardInputs.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.required = (method === 'card');
-  });
-
-  const upiInput = document.getElementById("upi-id-input");
-  if (upiInput) upiInput.required = (method === 'upi');
-}
-
-function processPayment() {
-  const overlay = document.getElementById("payment-processing-overlay");
-  const forms = document.getElementById("checkout-modal-forms");
-  const modalClose = document.getElementById("checkout-modal-close");
-  const stepText = document.getElementById("payment-processing-step");
-
-  if (!overlay || !forms || !modalClose || !stepText) return;
-
-  forms.classList.add('d-none');
-  overlay.classList.remove('d-none');
-  overlay.classList.add('d-flex');
-  modalClose.classList.add('disabled');
-  modalClose.disabled = true;
-
-  const steps = [
-    "Establishing secure 256-bit SSL encrypted tunnel...",
-    "Sending routing payload to merchant gateway...",
-    "Authorizing tokenization with your Bank institution...",
-    "Order securely finalized! Generating Awadhi tracking code..."
-  ];
-
-  let currentStep = 0;
-  stepText.innerText = steps[0];
-
-  const interval = setInterval(() => {
-    currentStep++;
-    if (currentStep < steps.length) {
-      stepText.innerText = steps[currentStep];
-    } else {
-      clearInterval(interval);
-      finalizeOrderPayment();
-    }
-  }, 1000);
-}
-
-function finalizeOrderPayment() {
-  const activeRest = getCartRestaurant();
-  if (!activeRest) return;
-
-  const billing = getBillingDetails();
-  const paymentTextMap = {
-    card: "Credit/Debit Card",
-    upi: `UPI (${document.getElementById("upi-id-input")?.value || 'keshav@upi'})`,
-    cod: "Cash on Delivery"
-  };
-
-  const newOrder = {
-    id: `LKO-${Math.floor(1000 + Math.random() * 9000)}`,
-    restaurantId: activeRest.id,
-    restaurantName: activeRest.name,
-    customerId: state.currentCustomerId || "cust-keshav",
-    items: [...state.cartItems],
-    subtotal: billing.subtotal,
-    deliveryFee: billing.deliveryFee,
-    taxAndFees: billing.taxAndFees,
-    discount: billing.discount,
-    total: billing.total,
-    status: "confirmed",
-    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-    paymentMethod: paymentTextMap[state.selectedPaymentMethod],
-    eta: "25-35 min",
-    trackingStep: 1
-  };
-
-  createOrderOnServer(newOrder);
-
-  
-  sendToFormspree("Order Placed", {
-    orderId: newOrder.id,
-    restaurant: newOrder.restaurantName,
-    customerName: state.userProfile.name,
-    customerEmail: state.userProfile.email,
-    customerPhone: state.userProfile.phone,
-    deliveryAddress: state.userProfile.address,
-    items: newOrder.items.map(i => `${i.menuItem.name} x${i.quantity}`).join(", "),
-    subtotal: newOrder.subtotal,
-    deliveryFee: newOrder.deliveryFee,
-    tax: newOrder.taxAndFees,
-    discount: newOrder.discount,
-    total: newOrder.total,
-    paymentMethod: newOrder.paymentMethod
-  });
-
-  state.orderHistory = [newOrder, ...state.orderHistory];
-  state.activeOrderId = newOrder.id;
-
-  state.cartItems = [];
-  state.appliedCoupon = null;
-
-  saveState();
-
-  const modalEl = document.getElementById('checkout-modal');
-  if (modalEl) {
-    const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.hide();
-  }
-
-  const overlay = document.getElementById("payment-processing-overlay");
-  const forms = document.getElementById("checkout-modal-forms");
-  const modalClose = document.getElementById("checkout-modal-close");
-  if (overlay) overlay.classList.add('d-none');
-  if (forms) forms.classList.remove('d-none');
-  if (modalClose) {
-    modalClose.classList.remove('disabled');
-    modalClose.disabled = false;
-  }
-
-  const inputs = ['card-name-input', 'card-number-input', 'card-expiry-input', 'card-cvv-input', 'upi-id-input'];
-  inputs.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-
-  navigateTo('tracking');
-}
-
-export function performLogout() {
-  state.currentCustomerId = "";
-  state.currentRestaurantId = "";
-  state.cartItems = [];
-  saveState();
-  
-  navigateTo('portal-landing');
-  
-  const alertBox = document.createElement('div');
-  alertBox.className = "position-fixed bottom-0 end-0 m-4 alert alert-dark text-white border-0 shadow-lg d-flex align-items-center gap-2 p-3";
-  alertBox.style.zIndex = "2000";
-  alertBox.style.borderRadius = "12px";
-  alertBox.style.backgroundColor = "#18181b";
-  alertBox.innerHTML = `
-    <i class="bi bi-box-arrow-left text-danger"></i>
-    <div class="small fw-bold">Successfully logged out from Lakhnawi Bites.</div>
-  `;
-  document.body.appendChild(alertBox);
-  setTimeout(() => {
-    alertBox.style.transition = "opacity 0.5s ease";
-    alertBox.style.opacity = "0";
-    setTimeout(() => alertBox.remove(), 500);
-  }, 2500);
-}
 
 
 
@@ -380,51 +190,7 @@ export function bindAllEvents() {
   });
 
   
-  document.getElementById("cart-checkout-btn")?.addEventListener('click', () => {
-    const offcanvasEl = document.getElementById('cart-offcanvas');
-    if (offcanvasEl) {
-      const offcanvas = window.bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
-      offcanvas.hide();
-    }
-
-    const billing = getBillingDetails();
-    
-    const elSubtotal = document.getElementById("checkout-calc-subtotal");
-    const elDiscountRow = document.getElementById("checkout-discount-row");
-    const elDiscount = document.getElementById("checkout-calc-discount");
-    const elDelivery = document.getElementById("checkout-calc-delivery");
-    const elTax = document.getElementById("checkout-calc-tax");
-    const elTotal = document.getElementById("checkout-calc-total");
-    const elTotalBtnText = document.getElementById("checkout-pay-btn-text");
-
-    if (elSubtotal) elSubtotal.innerText = `₹${billing.subtotal}`;
-    if (elDiscountRow && elDiscount) {
-      if (billing.discount > 0) {
-        elDiscountRow.classList.remove('d-none');
-        elDiscount.innerText = `-₹${billing.discount}`;
-      } else {
-        elDiscountRow.classList.add('d-none');
-      }
-    }
-    if (elDelivery) elDelivery.innerText = `₹${billing.deliveryFee}`;
-    if (elTax) elTax.innerText = `₹${billing.taxAndFees}`;
-    if (elTotal) elTotal.innerText = `₹${billing.total}`;
-    if (elTotalBtnText) elTotalBtnText.innerText = `Pay ₹${billing.total} & Confirm Order`;
-
-    const nameEl = document.getElementById("checkout-user-name");
-    const addressEl = document.getElementById("checkout-user-address");
-    if (nameEl) nameEl.innerText = state.userProfile.name;
-    if (addressEl) addressEl.innerText = state.userProfile.address;
-
-    setPaymentMethod('card');
-
-    const modalEl = document.getElementById('checkout-modal');
-    if (modalEl) {
-      const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-      modal.show();
-    }
-  });
-
+  document.getElementById("cart-checkout-btn")?.addEventListener('click', handleCartCheckout);
   
   document.getElementById("pay-select-card")?.addEventListener('click', () => setPaymentMethod('card'));
   document.getElementById("pay-select-upi")?.addEventListener('click', () => setPaymentMethod('upi'));
@@ -460,24 +226,7 @@ export function bindAllEvents() {
   });
 
   
-  document.getElementById("conflict-confirm-btn")?.addEventListener('click', () => {
-    if (state.conflictItem) {
-      state.cartItems = [{ menuItem: state.conflictItem.item, quantity: 1 }];
-      state.selectedRestaurantId = state.conflictItem.restaurant.id;
-      state.conflictItem = null;
-
-      saveState();
-      
-      const conflictModalEl = document.getElementById("conflict-modal");
-      if (conflictModalEl) {
-        const modal = window.bootstrap.Modal.getOrCreateInstance(conflictModalEl);
-        modal.hide();
-      }
-
-      navigateTo('menu');
-      renderCartDrawer();
-    }
-  });
+  document.getElementById("conflict-confirm-btn")?.addEventListener('click', handleConflictConfirm);
 
   
   document.getElementById("nav-exit-portal-btn")?.addEventListener('click', () => {
@@ -509,306 +258,15 @@ export function bindAllEvents() {
   });
 
   
-  const tabOrders = document.getElementById("rest-tab-orders");
-  const tabMenu = document.getElementById("rest-tab-menu");
-  const tabReviews = document.getElementById("rest-tab-reviews");
-  const blockOrders = document.getElementById("rest-view-orders-block");
-  const blockMenu = document.getElementById("rest-view-menu-block");
-  const blockReviews = document.getElementById("rest-view-reviews-block");
+  document.getElementById("rest-tab-orders")?.addEventListener('click', () => handleRestTabClick('orders'));
+  document.getElementById("rest-tab-menu")?.addEventListener('click', () => handleRestTabClick('menu'));
+  document.getElementById("rest-tab-reviews")?.addEventListener('click', () => handleRestTabClick('reviews'));
 
-  tabOrders?.addEventListener('click', () => {
-    state.restaurantActiveTab = 'orders';
-    tabOrders.classList.add('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabOrders.classList.remove('text-muted');
-    
-    tabMenu?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabMenu?.classList.add('text-muted');
-    tabReviews?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabReviews?.classList.add('text-muted');
-
-    if (blockOrders) {
-      blockOrders.classList.remove('d-none');
-      blockOrders.classList.add('d-block');
-    }
-    if (blockMenu) {
-      blockMenu.classList.add('d-none');
-      blockMenu.classList.remove('d-block');
-    }
-    if (blockReviews) {
-      blockReviews.classList.add('d-none');
-      blockReviews.classList.remove('d-block');
-    }
-    renderRestaurantWorkspace();
-  });
-
-  tabMenu?.addEventListener('click', () => {
-    state.restaurantActiveTab = 'menu';
-    tabMenu.classList.add('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabMenu.classList.remove('text-muted');
-    
-    tabOrders?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabOrders?.classList.add('text-muted');
-    tabReviews?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabReviews?.classList.add('text-muted');
-
-    if (blockMenu) {
-      blockMenu.classList.remove('d-none');
-      blockMenu.classList.add('d-block');
-    }
-    if (blockOrders) {
-      blockOrders.classList.add('d-none');
-      blockOrders.classList.remove('d-block');
-    }
-    if (blockReviews) {
-      blockReviews.classList.add('d-none');
-      blockReviews.classList.remove('d-block');
-    }
-    renderRestaurantWorkspace();
-  });
-
-  tabReviews?.addEventListener('click', () => {
-    state.restaurantActiveTab = 'reviews';
-    tabReviews.classList.add('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabReviews.classList.remove('text-muted');
-    
-    tabOrders?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabOrders?.classList.add('text-muted');
-    tabMenu?.classList.remove('active', 'text-dark', 'border-bottom', 'border-saffron');
-    tabMenu?.classList.add('text-muted');
-
-    if (blockReviews) {
-      blockReviews.classList.remove('d-none');
-      blockReviews.classList.add('d-block');
-    }
-    if (blockOrders) {
-      blockOrders.classList.add('d-none');
-      blockOrders.classList.remove('d-block');
-    }
-    if (blockMenu) {
-      blockMenu.classList.add('d-none');
-      blockMenu.classList.remove('d-block');
-    }
-    renderRestaurantWorkspace();
-  });
+  document.getElementById("rest-add-dish-form")?.addEventListener('submit', handleRestAddDish);
 
   
-  document.getElementById("rest-add-dish-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const activeRest = state.restaurants.find(r => r.id === state.currentRestaurantId);
-    if (!activeRest) return;
-
-    const nameInput = document.getElementById("add-dish-name");
-    const priceInput = document.getElementById("add-dish-price");
-    const categorySelect = document.getElementById("add-dish-category");
-    const isVegCheckbox = document.getElementById("add-dish-isveg");
-    const descInput = document.getElementById("add-dish-desc");
-    const imageInput = document.getElementById("add-dish-image");
-
-    const name = nameInput.value;
-    const price = parseInt(priceInput.value) || 150;
-    const category = categorySelect.value;
-    const isVeg = isVegCheckbox.checked;
-    const description = descInput.value;
-    const image = imageInput.value || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80";
-
-    const newItem = {
-      id: `dish-${Date.now()}`,
-      name,
-      description,
-      price,
-      isVeg,
-      category,
-      image,
-      isPopular: false
-    };
-
-    activeRest.menu.push(newItem);
-    createMenuItemOnServer(activeRest.id, newItem);
-
-    
-    sendToFormspree("New Menu Item Added", {
-      restaurantId: activeRest.id,
-      restaurantName: activeRest.name,
-      dishName: newItem.name,
-      price: newItem.price,
-      category: newItem.category,
-      isVeg: newItem.isVeg,
-      description: newItem.description
-    });
-
-    if (!activeRest.categories.includes(category)) {
-      activeRest.categories.push(category);
-    }
-
-    saveState();
-    renderRestaurantWorkspace();
-
-    nameInput.value = "";
-    priceInput.value = "";
-    descInput.value = "";
-    imageInput.value = "";
-    isVegCheckbox.checked = true;
-  });
-
-  
-  document.getElementById("reg-customer-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const nameInput = document.getElementById("reg-cust-name");
-    const emailInput = document.getElementById("reg-cust-email");
-    const phoneInput = document.getElementById("reg-cust-phone");
-    const localitySelect = document.getElementById("reg-cust-locality");
-    const addressInput = document.getElementById("reg-cust-address");
-    const passwordInput = document.getElementById("reg-cust-password");
-
-    const newCust = {
-      id: `cust-${Date.now()}`,
-      name: nameInput.value,
-      email: emailInput.value,
-      phone: phoneInput.value,
-      locality: localitySelect.value,
-      address: addressInput.value,
-      password: passwordInput.value || "1234"
-    };
-
-    state.customerProfiles.push(newCust);
-    state.currentCustomerId = newCust.id;
-
-    createCustomerOnServer(newCust);
-
-    
-    sendToFormspree("Customer Registration", {
-      name: newCust.name,
-      email: newCust.email,
-      phone: newCust.phone,
-      locality: newCust.locality,
-      address: newCust.address
-    });
-
-    state.userProfile = {
-      name: newCust.name,
-      email: newCust.email,
-      phone: newCust.phone,
-      address: newCust.address
-    };
-
-    saveState();
-
-    const modalEl = document.getElementById('register-customer-modal');
-    if (modalEl) {
-      const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-      modal?.hide();
-    }
-
-    nameInput.value = "";
-    emailInput.value = "";
-    phoneInput.value = "";
-    addressInput.value = "";
-    if (passwordInput) passwordInput.value = "";
-
-    state.cartItems = [];
-    saveState();
-
-    navigateTo('home');
-  });
-
-  
-  document.getElementById("reg-restaurant-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const nameInput = document.getElementById("reg-rest-name");
-    const descInput = document.getElementById("reg-rest-desc");
-    const localitySelect = document.getElementById("reg-rest-locality");
-    const feeInput = document.getElementById("reg-rest-fee");
-    const addressInput = document.getElementById("reg-rest-address");
-    const bannerInput = document.getElementById("reg-rest-banner");
-    const passwordInput = document.getElementById("reg-rest-password");
-
-    const newRest = {
-      id: `rest-${Date.now()}`,
-      name: nameInput.value,
-      description: descInput.value,
-      locality: localitySelect.value,
-      address: addressInput.value,
-      banner: bannerInput.value || "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=600&auto=format&fit=crop&q=80",
-      rating: 4.8,
-      reviewsCount: 1,
-      deliveryTime: "30-40 mins",
-      minOrder: 150,
-      deliveryFee: parseInt(feeInput.value) || 40,
-      categories: ["Kebabs", "Desserts"],
-      logo: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=150&auto=format&fit=crop&q=80",
-      password: passwordInput.value || "1234",
-      menu: [
-        {
-          id: `m-kebab-${Date.now()}`,
-          name: "Awadhi Dum Galouti Kebab",
-          description: "Finely minced melt-in-the-mouth kebabs infused with 150 rare spices and dum cooked on slow fire.",
-          price: 280,
-          isVeg: false,
-          category: "Kebabs",
-          image: "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400&auto=format&fit=crop&q=80",
-          isPopular: true
-        },
-        {
-          id: `m-dessert-${Date.now()}`,
-          name: "Shahi Tukda Double Ka Meetha",
-          description: "Crisp-fried bread slices soaked in fragrant saffron milk rabri, garnished with pistachios & gold leaf.",
-          price: 150,
-          isVeg: true,
-          category: "Desserts",
-          image: "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=400&auto=format&fit=crop&q=80",
-          isPopular: false
-        }
-      ]
-    };
-
-    state.restaurants.push(newRest);
-
-    
-    sendToFormspree("Restaurant Registration", {
-      name: newRest.name,
-      description: newRest.description,
-      locality: newRest.locality,
-      address: newRest.address,
-      deliveryFee: newRest.deliveryFee
-    });
-    state.currentRestaurantId = newRest.id;
-
-    createRestaurantOnServer(newRest).then(data => {
-      if (data && data.success && data.restaurant) {
-        const registeredRest = data.restaurant;
-        const oldId = newRest.id;
-        newRest.id = registeredRest.id;
-        if (state.currentRestaurantId === oldId) {
-          state.currentRestaurantId = registeredRest.id;
-        }
-
-        for (const item of newRest.menu) {
-          createMenuItemOnServer(registeredRest.id, item);
-        }
-
-        saveState();
-      }
-    });
-
-    saveState();
-
-    const modalEl = document.getElementById('register-restaurant-modal');
-    if (modalEl) {
-      const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-      modal?.hide();
-    }
-
-    nameInput.value = "";
-    descInput.value = "";
-    feeInput.value = "";
-    addressInput.value = "";
-    bannerInput.value = "";
-    if (passwordInput) passwordInput.value = "";
-
-    navigateTo('restaurant');
-  });
+  document.getElementById("reg-customer-form")?.addEventListener('submit', handleCustomerRegister);
+  document.getElementById("reg-restaurant-form")?.addEventListener('submit', handleRestaurantRegister);
 
   
   document.getElementById("rest-refresh-orders")?.addEventListener('click', () => {
@@ -1030,55 +488,8 @@ export function bindAllEvents() {
   });
 
   
-  document.getElementById("rest-owner-password-btn")?.addEventListener('click', () => {
-    const errorEl = document.getElementById("rest-pass-error-msg");
-    const successEl = document.getElementById("rest-pass-success-msg");
-    errorEl?.classList.add("d-none");
-    successEl?.classList.add("d-none");
-
-    const currInput = document.getElementById("rest-curr-password");
-    const newInput = document.getElementById("rest-new-password");
-    if (currInput) currInput.value = "";
-    if (newInput) newInput.value = "";
-
-    const modalEl = document.getElementById("rest-password-modal");
-    if (modalEl) {
-      const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-      modal.show();
-    }
-  });
-
-  document.getElementById("rest-password-change-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const currInput = document.getElementById("rest-curr-password");
-    const newInput = document.getElementById("rest-new-password");
-    const errorEl = document.getElementById("rest-pass-error-msg");
-    const successEl = document.getElementById("rest-pass-success-msg");
-
-    const activeRest = state.restaurants.find(r => r.id === state.currentRestaurantId);
-    if (activeRest) {
-      if (currInput.value === activeRest.password) {
-        activeRest.password = newInput.value;
-
-        updateRestaurantPasswordOnServer(activeRest.id, activeRest.password);
-
-        saveState();
-        errorEl?.classList.add("d-none");
-        successEl?.classList.remove("d-none");
-        
-        setTimeout(() => {
-          const modalEl = document.getElementById("rest-password-modal");
-          if (modalEl) {
-            const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal?.hide();
-          }
-        }, 1500);
-      } else {
-        errorEl?.classList.remove("d-none");
-        successEl?.classList.add("d-none");
-      }
-    }
-  });
+  document.getElementById("rest-owner-password-btn")?.addEventListener('click', handleRestPasswordBtnClick);
+  document.getElementById("rest-password-change-form")?.addEventListener('submit', handleRestPasswordChange);
 
   
   document.getElementById("tracking-fast-forward")?.addEventListener('click', () => {
@@ -1156,185 +567,15 @@ export function bindAllEvents() {
   });
 
   
-  document.getElementById("auth-forgot-link")?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const loginForm = document.getElementById("auth-login-form");
-    const forgotForm = document.getElementById("auth-forgot-form");
-    
-    if (loginForm) {
-      loginForm.classList.add("d-none");
-      loginForm.classList.remove("d-flex");
-    }
-    if (forgotForm) {
-      forgotForm.classList.remove("d-none");
-      forgotForm.classList.add("d-flex");
-    }
-  });
-
+  document.getElementById("auth-forgot-link")?.addEventListener('click', handleForgotLink);
   document.getElementById("auth-forgot-back")?.addEventListener('click', (e) => {
     e.preventDefault();
     resetAuthModalViews();
   });
-
-  
-  document.getElementById("auth-forgot-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const emailInput = document.getElementById("auth-forgot-email");
-    const phoneInput = document.getElementById("auth-forgot-phone");
-    const errorEl = document.getElementById("auth-forgot-error");
-
-    const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : "";
-    const enteredPhone = phoneInput ? phoneInput.value.trim() : "";
-
-    let match = false;
-    if (state.pendingAuthType === 'customer' && state.pendingAuthId) {
-      const activeCust = state.customerProfiles.find(p => p.id === state.pendingAuthId);
-      if (activeCust) {
-        const profileEmail = (activeCust.email || "").trim().toLowerCase();
-        const profilePhone = (activeCust.phone || "").trim();
-        const normalize = (s) => s.replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0/, '');
-        if (profileEmail === enteredEmail && normalize(profilePhone) === normalize(enteredPhone)) {
-          match = true;
-        }
-      }
-    } else if (state.pendingAuthType === 'restaurant' && state.pendingAuthId) {
-      const activeRest = state.restaurants.find(r => r.id === state.pendingAuthId);
-      if (activeRest) {
-        const restEmail = (activeRest.email || "").trim().toLowerCase();
-        const restPhone = (activeRest.phone || "").trim();
-        const normalize = (s) => s.replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0/, '');
-        if (restEmail === enteredEmail && normalize(restPhone) === normalize(enteredPhone)) {
-          match = true;
-        }
-      }
-    }
-
-    if (match) {
-      errorEl?.classList.add("d-none");
-      const forgotForm = document.getElementById("auth-forgot-form");
-      const resetForm = document.getElementById("auth-reset-form");
-      if (forgotForm) {
-        forgotForm.classList.add("d-none");
-        forgotForm.classList.remove("d-flex");
-      }
-      if (resetForm) {
-        resetForm.classList.remove("d-none");
-        resetForm.classList.add("d-flex");
-      }
-    } else {
-      errorEl?.classList.remove("d-none");
-    }
-  });
-
-  
-  document.getElementById("auth-reset-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const newPasswordInput = document.getElementById("auth-reset-password");
-    const newPassword = newPasswordInput ? newPasswordInput.value : "";
-
-    if (state.pendingAuthType === 'customer' && state.pendingAuthId) {
-      const activeCust = state.customerProfiles.find(p => p.id === state.pendingAuthId);
-      if (activeCust) {
-        activeCust.password = newPassword;
-
-        updateCustomerProfileOnServer(activeCust.id, { password: activeCust.password });
-
-        state.currentCustomerId = state.pendingAuthId;
-        state.userProfile = {
-          name: activeCust.name,
-          email: activeCust.email,
-          phone: activeCust.phone,
-          address: activeCust.address
-        };
-        saveState();
-
-        const authModalEl = document.getElementById("auth-modal");
-        if (authModalEl) {
-          const modal = window.bootstrap.Modal.getOrCreateInstance(authModalEl);
-          modal?.hide();
-        }
-        navigateTo('home');
-      }
-    } else if (state.pendingAuthType === 'restaurant' && state.pendingAuthId) {
-      const activeRest = state.restaurants.find(r => r.id === state.pendingAuthId);
-      if (activeRest) {
-        activeRest.password = newPassword;
-
-        updateRestaurantPasswordOnServer(activeRest.id, activeRest.password);
-
-        state.currentRestaurantId = state.pendingAuthId;
-        saveState();
-
-        const authModalEl = document.getElementById("auth-modal");
-        if (authModalEl) {
-          const modal = window.bootstrap.Modal.getOrCreateInstance(authModalEl);
-          modal?.hide();
-        }
-        navigateTo('restaurant');
-      }
-    }
-  });
-
-  
-  document.getElementById("auth-login-form")?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const passwordInput = document.getElementById("auth-password-input");
-    const errorMsgEl = document.getElementById("auth-error-msg");
-    const enteredPassword = passwordInput ? passwordInput.value : "";
-
-    if (state.pendingAuthType === 'customer' && state.pendingAuthId) {
-      const activeCust = state.customerProfiles.find(p => p.id === state.pendingAuthId);
-      if (activeCust && activeCust.password === enteredPassword) {
-        state.currentCustomerId = state.pendingAuthId;
-        state.userProfile = {
-          name: activeCust.name,
-          email: activeCust.email,
-          phone: activeCust.phone,
-          address: activeCust.address
-        };
-        saveState();
-        
-        const authModalEl = document.getElementById("auth-modal");
-        if (authModalEl) {
-          const modal = window.bootstrap.Modal.getOrCreateInstance(authModalEl);
-          modal?.hide();
-        }
-        navigateTo('home');
-      } else {
-        errorMsgEl?.classList.remove("d-none");
-      }
-    } else if (state.pendingAuthType === 'restaurant' && state.pendingAuthId) {
-      const activeRest = state.restaurants.find(r => r.id === state.pendingAuthId);
-      if (activeRest && activeRest.password === enteredPassword) {
-        state.currentRestaurantId = state.pendingAuthId;
-        saveState();
-        
-        const authModalEl = document.getElementById("auth-modal");
-        if (authModalEl) {
-          const modal = window.bootstrap.Modal.getOrCreateInstance(authModalEl);
-          modal?.hide();
-        }
-        navigateTo('restaurant');
-      } else {
-        errorMsgEl?.classList.remove("d-none");
-      }
-    }
-  });
-
-  
-  document.getElementById("auth-password-toggle")?.addEventListener('click', () => {
-    const passwordInput = document.getElementById("auth-password-input");
-    const toggleIcon = document.querySelector("#auth-password-toggle i");
-    if (passwordInput && toggleIcon) {
-      if (passwordInput.type === "password") {
-        passwordInput.type = "text";
-        toggleIcon.className = "bi bi-eye-slash";
-      } else {
-        passwordInput.type = "password";
-        toggleIcon.className = "bi bi-eye";
-      }
-    }
-  });
+  document.getElementById("auth-forgot-form")?.addEventListener('submit', handleForgotForm);
+  document.getElementById("auth-reset-form")?.addEventListener('submit', handleResetForm);
+  document.getElementById("auth-login-form")?.addEventListener('submit', handleLoginForm);
+  document.getElementById("auth-password-toggle")?.addEventListener('click', togglePasswordVisibility);
 
   
   const starContainer = document.getElementById("star-rating-container");
