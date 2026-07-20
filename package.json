@@ -8,7 +8,8 @@
     "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.ts",
-    "lint": "echo 'No TS checks needed'"
+    "lint": "echo 'No TS checks needed'",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
