@@ -198,7 +198,7 @@ npx drizzle-kit push
   ```bash
   npm run dev
   ```
-  Open https://lakhnawi-bits.onrender.com(https://lakhnawi-bits.onrender.com/) in your web browser.
+  Open https://lakhnawi-bits.onrender.com in your web browser.
 
 * **Production Mode:** Build and bundle static assets first, then launch the optimized production server:
   ```bash
