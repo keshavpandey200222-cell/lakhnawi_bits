@@ -647,7 +647,6 @@ export function bindAllEvents() {
     
     const response = await createReviewOnServer(newReview);
 
-    
     const reviewRestaurant = state.restaurants.find(r => r.id === restaurantId);
     sendToFormspree("Restaurant Review", {
       customerName: newReview.customerName,
@@ -655,22 +654,46 @@ export function bindAllEvents() {
       rating: newReview.rating,
       reviewText: newReview.reviewText
     });
+
+    let success = false;
+    let reviewData = null;
+    let avgRating = 4.0;
+    let reviewsCount = 0;
+
     if (response && response.success) {
+      success = true;
+      reviewData = response.review;
+      avgRating = response.avgRating;
+      reviewsCount = response.reviewsCount;
+    } else {
+      console.warn("Server review submission failed. Using local storage fallback.");
+      success = true; 
+      reviewData = {
+        id: "rev-" + Math.random().toString(36).substring(2, 9),
+        ...newReview
+      };
       
-      state.reviews.push(response.review);
+      const localReviews = state.reviews.filter(rev => rev.restaurantId === restaurantId);
+      localReviews.push(reviewData);
       
+      reviewsCount = localReviews.length;
+      const sumRatings = localReviews.reduce((sum, rev) => sum + rev.rating, 0);
+      avgRating = reviewsCount > 0 ? Number((sumRatings / reviewsCount).toFixed(1)) : 4.0;
+    }
+
+    if (success) {
+      state.reviews.push(reviewData);
       
       const rest = state.restaurants.find(r => r.id === restaurantId);
       if (rest) {
-        rest.rating = response.avgRating;
-        rest.reviewsCount = response.reviewsCount;
+        rest.rating = avgRating;
+        rest.reviewsCount = reviewsCount;
       }
 
       saveState();
 
       if (successMsg) successMsg.classList.remove("d-none");
 
-      
       setTimeout(() => {
         const modalEl = document.getElementById("rate-review-modal");
         if (modalEl) {
@@ -678,14 +701,8 @@ export function bindAllEvents() {
           modalInstance.hide();
         }
         
-        
         navigateTo(state.activeView);
       }, 1500);
-    } else {
-      if (errorMsg) {
-        errorMsg.innerText = "An error occurred while posting your review. Please try again.";
-        errorMsg.classList.remove("d-none");
-      }
     }
   });
 }
