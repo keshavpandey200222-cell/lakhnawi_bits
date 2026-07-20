@@ -32,7 +32,7 @@ A dedicated workspace dashboard designed for restaurant operators to handle inco
   * **Styling & Aesthetics:** Vanilla CSS, HSL tailored palettes, glassmorphic dark-mode overlay components, [Bootstrap 5.3.3](https://getbootstrap.com/), and [Tailwind CSS v4](https://tailwindcss.com/) (Vite Plugin).
   * **Interactive Maps:** [Leaflet JS v1.9.4](https://leafletjs.com/)
 * **Backend:**
-  * **Server:** [Express.js](https://expressjs.com/) (Node.js) serving API endpoints and bundling SPA/MPA assets.
+  * **Server:** Node.js serving API endpoints and bundling SPA/MPA assets.
 * **Database & ORM:**
   * **Database:** PostgreSQL
   * **Object Relational Mapper:** [Drizzle ORM](https://orm.drizzle.team/)
