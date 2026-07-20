@@ -1,12 +1,12 @@
-# 🕌 Lakhnawi Bites: Lucknow's Elite Culinary Network
+# Lakhnawi Bites: Lucknow's Elite Culinary Network
 
 > **Lakhnawi Bites** is a full-stack, responsive, and visually stunning food ordering multi-page application (MPA) built using modern web standards. Inspired by the rich culinary heritage of Lucknow, the application connects foodies with legendary local eateries—like *Tunday Kababi*, *Royal Cafe*, *Idris Biryani*, and *Prakash Kulfi*—across iconic localities including *Aminabad*, *Hazratganj*, and *Chowk*.
 
 ---
 
-## 🍽️ Key Product Portals
+## Key Product Portals
 
-### 1. 😋 Consumer Foodie Portal
+### 1. Consumer Foodie Portal
 Allows customers to order signature dishes, manage profiles, and track active deliveries.
 * **Profile Selection:** Quick-swap between customized test profiles (like Keshav Pandey or Priya Sharma) directly from the landing page.
 * **Gourmet Catalog:** Browse legendary eateries with custom filtering (Veg/Non-Veg) and tags (Popular, Kebabs, Street Food, Biryani, Breads, Desserts).
@@ -14,18 +14,18 @@ Allows customers to order signature dishes, manage profiles, and track active de
 * **Simulated Checkout:** Enforce mock UPI, Credit/Debit card, and Cash-on-Delivery payment simulations with real-time success state feedback.
 * **Robust Reviews & Ratings:** Enforce database persistence for ratings. In case of database connection failures, a built-in **offline local storage fallback** catches review submissions and dynamically recalculates average restaurant ratings locally.
 
-### 2. 👨‍🍳 Kitchen Owner Portal
+### 2. Kitchen Owner Portal
 A dedicated workspace dashboard designed for restaurant operators to handle incoming orders and maintain menus.
 * **Order Workspace Queue:** Track incoming orders in real-time. Operators can update cooking statuses (Pending ➡️ Preparing ➡️ Dispatched ➡️ Delivered).
 * **Dynamic Menu Catalog Management:** Add new dishes to the menu with image URLs, details, pricing, and category filters. Modify price tags instantly with server-side synchronization.
 
-### 3. 📍 Live GPS Order Tracking
+### 3. Live GPS Order Tracking
 * **Leaflet JS Integration:** Real-time interactive map tracks the rider's progress from the restaurant to the user's locality using live GPS pin markers and customized routing polylines.
 * **Order Progress Timeline:** Visual tracking step tracker showing the delivery status step-by-step.
 
 ---
 
-## 🛠️ Technology Stack & Libraries
+## Technology Stack & Libraries
 
 * **Frontend:**
   * **Core Logic:** Vanilla JavaScript (ES Modules)
@@ -43,7 +43,7 @@ A dedicated workspace dashboard designed for restaurant operators to handle inco
 
 ---
 
-## 📂 Project Directory Structure
+## Project Directory Structure
 
 ```markdown
 ├── dist/                          # Compiled build output folder (HTML, CSS, JS, server)
@@ -80,7 +80,7 @@ A dedicated workspace dashboard designed for restaurant operators to handle inco
 
 ---
 
-## 🗄️ Database Schemas & Relations
+## Database Schemas & Relations
 
 The PostgreSQL database is organized into 5 relational tables declared in `src/db/schema.js`:
 
@@ -165,7 +165,7 @@ erDiagram
 
 ---
 
-## ⚡ Setup & Installation
+## Setup & Installation
 
 ### 1. Prerequisites
 Ensure you have [Node.js](https://nodejs.org/) installed on your machine.
