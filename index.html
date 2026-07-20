@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Lakhnawi Bites</title>
+
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <style>
+    :root {
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --color-saffron: #ea580c;
+      --color-saffron-hover: #c2410c;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      letter-spacing: -0.011em;
+      background-color: #fcfcfd !important;
+    }
+
+    .font-display {
+      font-family: var(--font-display);
+    }
+
+    .font-sans {
+      font-family: var(--font-sans);
+    }
+
+    .font-mono {
+      font-family: var(--font-mono);
+    }
+
+    .text-saffron {
+      color: var(--color-saffron) !important;
+    }
+
+    .btn-saffron {
+      background-color: var(--color-saffron) !important;
+      color: #ffffff !important;
+      border: none;
+      font-weight: 700;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .btn-saffron:hover {
+      background-color: var(--color-saffron-hover) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2);
+    }
+
+    .btn-outline-saffron {
+      color: var(--color-saffron) !important;
+      border: 2px solid var(--color-saffron) !important;
+      background-color: transparent !important;
+      font-weight: 700;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .btn-outline-saffron:hover {
+      background-color: var(--color-saffron) !important;
+      color: #ffffff !important;
+    }
+
+    .hover-up:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    .selection-saffron::selection {
+      background-color: rgba(234, 88, 12, 0.2) !important;
+      color: var(--color-saffron) !important;
+    }
+
+    /* Map styling to resolve z-index bugs with Bootstrap */
+    .leaflet-container {
+      font-family: var(--font-sans);
+    }
+
+    /* Hide standard scrollbars for category tracks */
+    #category-pills-container::-webkit-scrollbar,
+    #menu-category-pills::-webkit-scrollbar {
+      display: none;
+    }
+
+    #category-pills-container,
+    #menu-category-pills {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Perfect high-contrast footer styling with premium dark stone palette */
+    footer {
+      background-color: #0c0a09 !important;
+      /* Rich deep stone dark tone */
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    footer .text-muted {
+      color: #a8a29e !important;
+      /* Stone-400 for highly readable copy text */
+    }
+
+    footer h6.text-muted {
+      color: #e7e5e4 !important;
+      /* Stone-200 for clean uppercase subheaders */
+      letter-spacing: 1.2px !important;
+    }
+
+    footer .list-unstyled li {
+      color: #d6d3d1 !important;
+      /* Stone-300 for list options */
+    }
+
+    footer .text-uppercase span {
+      color: #f5f5f4 !important;
+      /* Stone-100 for security assurance badge text */
+    }
+  </style>
+</head>
+
+<body class="bg-light font-sans text-dark min-vh-100 d-flex flex-column selection-saffron">
+
+
+  <div class="main-wrapper d-flex flex-column min-vh-100" id="main-view-wrapper">
+
+
+    <nav class="navbar navbar-expand-lg bg-dark text-white border-bottom py-3 sticky-top shadow-sm z-index-1040"
+      style="background-color: #09090b !important; border-color: rgba(255,255,255,0.05) !important;">
+      <div class="container-fluid px-md-4">
+
+
+        <a class="navbar-brand d-flex align-items-center gap-2 text-white m-0" href="#" id="nav-logo-btn"
+          style="cursor: pointer;">
+          <div class="bg-saffron text-white rounded d-flex align-items-center justify-content-center"
+            style="width: 38px; height: 38px; background-color: #ea580c;">
+            <i class="bi bi-egg-fried fs-4"></i>
+          </div>
+          <span class="text-base font-display fw-black tracking-tight text-white">
+            Lakhnawi <span class="text-saffron" style="color: #ea580c;">Bites</span>
+          </span>
+        </a>
+
+
+        <div class="d-flex align-items-center gap-2.5 ms-auto">
+
+          <button class="btn btn-outline-light border-0 text-white rounded-circle position-relative p-2" type="button"
+            id="nav-cart-btn" data-bs-toggle="offcanvas" data-bs-target="#cart-offcanvas"
+            aria-controls="cart-offcanvas">
+            <i class="bi bi-bag text-white" style="font-size: 19px;"></i>
+            <span
+              class="position-absolute top-1 start-75 translate-middle badge rounded-pill bg-danger border border-white text-white d-none"
+              id="nav-cart-count" style="font-size: 9px; padding: 3px 6px;">0</span>
+          </button>
+
+
+          <button class="btn btn-outline-light border-0 text-white rounded-circle p-2" type="button"
+            id="nav-profile-btn">
+            <i class="bi bi-person text-white" style="font-size: 19px;"></i>
+          </button>
+
+
+        </div>
+
+      </div>
+    </nav>
+
+
+    <div id="views-container">
+
+      <!-- ================= PORTAL LANDING VIEW ================= -->
+      <div id="portal-landing-view" class="container py-4 py-lg-5 d-block">
+
+        <!-- Elegant Portal Hero Header -->
+        <div class="text-center mb-5 mt-2">
+          <span
+            class="badge bg-saffron text-white fw-bold text-uppercase px-3 py-1.5 mb-3 d-inline-flex align-items-center gap-1.5"
+            style="background-color: #ea580c; font-size: 10px; letter-spacing: 0.5px;">
+            <i class="bi bi-award-fill"></i> Lucknow's Elite Culinary Network
+          </span>
+          <h1 class="display-5 font-display fw-black text-dark mb-2">
+            Lakhnawi <span class="text-saffron" style="color: #ea580c;">Bites</span> Gateway
+          </h1>
+          <p class="text-muted mx-auto" style="max-width: 650px; font-size: 13.5px; line-height: 1.6;">
+            Indulge in Aminabad's century-old Galouti Kebabs and Hazratganj's royal Basket Chaats, or manage your
+            digital kitchen queue in real-time. Choose your portal below to begin your Awadhi experience.
+          </p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+
+          <!-- PORTAL CARD 1: CONSUMER (FOODIE) -->
+          <div class="col-lg-6 col-md-10">
+            <div class="card h-100 border-0 rounded-4 shadow-sm overflow-hidden text-start hover-up"
+              style="transition: all 0.25s ease-in-out; background: #ffffff;">
+              <div class="position-relative" style="height: 180px;">
+                <div class="position-absolute w-100 h-100 bg-dark opacity-50" style="z-index: 1; top: 0; left: 0;">
+                </div>
+                <img src="https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=600&auto=format&fit=crop&q=80"
+                  alt="Awadhi Foodie" class="w-100 h-100 object-cover position-absolute"
+                  style="object-fit: cover; top:0; left:0; z-index: 0;">
+                <div class="position-absolute bottom-0 start-0 p-4" style="z-index: 2;">
+                  <span class="badge bg-warning text-dark fw-bold text-uppercase px-2.5 py-1 mb-2"
+                    style="font-size: 9px; letter-spacing: 0.5px;">Royal Connoisseur</span>
+                  <h3 class="font-display fw-bold text-white m-0">Consumer Foodie Portal</h3>
+                </div>
+              </div>
+
+              <div class="card-body p-4 bg-white d-flex flex-column justify-content-between" style="min-height: 280px;">
+                <div>
+                  <p class="text-muted small mb-4">
+                    Browse Aminabad, Hazratganj, and Chowk's top culinary spots. Order freshly baked Shahi Sheermal, Dum
+                    Biryanis, and traditional Kesar Pista Falooda Kulfi with live GPS route tracking.
+                  </p>
+
+                  <!-- Account Selection Dropdown -->
+                  <div class="mb-4">
+                    <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+                      style="font-size: 9px; letter-spacing: 0.5px;">Select Active Profile</label>
+                    <select class="form-select font-sans py-2.5" id="landing-customer-select"
+                      style="font-size: 13px; font-weight: 500;">
+                      <!-- Render customer profiles dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="d-flex flex-column gap-2 mt-auto">
+                  <button
+                    class="btn btn-saffron py-2.5 fw-bold text-xs rounded-3 w-100 d-flex align-items-center justify-content-center gap-2"
+                    id="landing-enter-consumer-btn">
+                    <span>Enter Foodie Portal</span>
+                    <i class="bi bi-arrow-right-short fs-5"></i>
+                  </button>
+
+                  <button
+                    class="btn btn-link text-decoration-none text-saffron py-1 text-center fw-bold text-xs mt-1 border-0 bg-transparent"
+                    id="landing-create-customer-btn">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Create New Customer Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PORTAL CARD 2: RESTAURANT OWNER -->
+          <div class="col-lg-6 col-md-10">
+            <div class="card h-100 border-0 rounded-4 shadow-sm overflow-hidden text-start hover-up"
+              style="transition: all 0.25s ease-in-out; background: #ffffff;">
+              <div class="position-relative" style="height: 180px;">
+                <div class="position-absolute w-100 h-100 bg-dark opacity-60" style="z-index: 1; top: 0; left: 0;">
+                </div>
+                <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=600&auto=format&fit=crop&q=80"
+                  alt="Restaurant Kitchen" class="w-100 h-100 object-cover position-absolute"
+                  style="object-fit: cover; top:0; left:0; z-index: 0;">
+                <div class="position-absolute bottom-0 start-0 p-4" style="z-index: 2;">
+                  <span class="badge bg-danger text-white fw-bold text-uppercase px-2.5 py-1 mb-2"
+                    style="font-size: 9px; letter-spacing: 0.5px;">Kitchen Manager</span>
+                  <h3 class="font-display fw-bold text-white m-0">Restaurant Owner Portal</h3>
+                </div>
+              </div>
+
+              <div class="card-body p-4 bg-white d-flex flex-column justify-content-between" style="min-height: 280px;">
+                <div>
+                  <p class="text-muted small mb-4">
+                    Accept orders from foodies, update cooking & dispatch status in real-time, modify menu prices or
+                    create new local specialties, and examine delivery area coverage and sales.
+                  </p>
+
+                  <!-- Restaurant Selection Dropdown -->
+                  <div class="mb-4">
+                    <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+                      style="font-size: 9px; letter-spacing: 0.5px;">Select Active Kitchen</label>
+                    <select class="form-select font-sans py-2.5" id="landing-restaurant-select"
+                      style="font-size: 13px; font-weight: 500;">
+                      <!-- Render restaurants dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="d-flex flex-column gap-2 mt-auto">
+                  <button
+                    class="btn btn-dark bg-zinc-900 border-0 py-2.5 fw-bold text-xs rounded-3 w-100 d-flex align-items-center justify-content-center gap-2"
+                    id="landing-enter-restaurant-btn" style="background-color: #18181b;">
+                    <span>Manage Selected Kitchen</span>
+                    <i class="bi bi-sliders fs-6 text-saffron"></i>
+                  </button>
+
+                  <button
+                    class="btn btn-link text-decoration-none text-dark py-1 text-center fw-bold text-xs mt-1 border-0 bg-transparent"
+                    id="landing-create-restaurant-btn">
+                    <i class="bi bi-plus-circle-fill me-1 text-saffron" style="color: #ea580c !important;"></i> Register
+                    New Awadhi Restaurant
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+
+    <div id="modals-container">
+
+      <!-- ================= ROYAL CART OFFCANVAS DRAWER ================= -->
+      <div class="offcanvas offcanvas-end border-0 shadow-lg text-start" tabindex="-1" id="cart-offcanvas"
+        aria-labelledby="cartOffcanvasLabel" style="width: 420px; z-index: 1060;">
+        <div class="offcanvas-header bg-dark text-white p-4">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 36px; height: 36px; background-color: #ea580c;">
+              <i class="bi bi-bag-check fs-5"></i>
+            </div>
+            <div>
+              <h5 class="offcanvas-title font-display fw-black text-white m-0" id="cartOffcanvasLabel">Your Foodie Bag
+              </h5>
+              <span class="text-muted d-block" id="cart-restaurant-name" style="font-size: 10px;">Select active menu to
+                fill...</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+            aria-label="Close"></button>
+        </div>
+
+        <div class="offcanvas-body p-4 d-flex flex-column justify-content-between bg-white" style="height: 100%;">
+          <!-- Items List Scroll Area -->
+          <div class="cart-scroll-area overflow-y-auto mb-3 text-start" id="cart-scroll-content"
+            style="flex-grow: 1; max-height: calc(100% - 190px);">
+            <!-- Populated dynamically via state -->
+          </div>
+
+          <!-- Billing & Action Summary Box -->
+          <div class="border-top pt-3 bg-white mt-auto" id="cart-billing-panel">
+            <div class="d-flex justify-content-between align-items-center mb-1.5 text-muted small">
+              <span>Nawabi Subtotal:</span>
+              <strong class="text-dark" id="cart-calc-subtotal">₹0</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1.5 text-success small d-none"
+              id="cart-discount-row">
+              <span>Nawabi Discount:</span>
+              <strong class="text-success" id="cart-calc-discount">-₹0</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1.5 text-muted small">
+              <span>Awadhi Delivery Fee:</span>
+              <strong class="text-dark" id="cart-calc-delivery">₹0</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1.5 text-muted small">
+              <span>Taxes & Fees:</span>
+              <strong class="text-dark" id="cart-calc-tax">₹0</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3 border-top pt-2">
+              <strong class="text-dark font-display" style="font-size: 15px;">Estimated Total:</strong>
+              <strong class="text-saffron font-display fs-4" id="cart-calc-total" style="color: #ea580c;">₹0</strong>
+            </div>
+
+            <button id="cart-checkout-btn"
+              class="btn btn-saffron w-100 py-3 fw-bold text-xs rounded-3 d-flex align-items-center justify-content-center gap-2">
+              <i class="bi bi-credit-card-2-front-fill"></i>
+              <span>Proceed to Royal Checkout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= SECURE CHECKOUT MODAL ================= -->
+      <div class="modal fade" id="checkout-modal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true"
+        style="z-index: 1065;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start position-relative">
+
+            <!-- Secure processing overlay -->
+            <div id="payment-processing-overlay"
+              class="position-absolute d-none flex-column align-items-center justify-content-center bg-white p-5 text-center"
+              style="top:0; left:0; right:0; bottom:0; z-index: 1090;">
+              <div class="spinner-border text-saffron" role="status"
+                style="width: 3.5rem; height: 3.5rem; color: #ea580c !important;">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <h4 class="font-display fw-bold text-dark mt-4 mb-2">Processing Your Royal Order</h4>
+              <p id="payment-processing-step" class="text-muted small" style="max-width: 320px;">Establishing secure
+                256-bit SSL encrypted tunnel...</p>
+            </div>
+
+            <div class="modal-header bg-dark text-white p-4 border-0">
+              <div class="d-flex align-items-center gap-2.5">
+                <div class="rounded bg-saffron text-white d-flex align-items-center justify-content-center"
+                  style="width: 38px; height: 38px; background-color: #ea580c;">
+                  <i class="bi bi-shield-check text-white fs-5"></i>
+                </div>
+                <div>
+                  <h5 class="modal-title font-display fw-bold text-white m-0" id="checkoutModalLabel">Royal Awadhi
+                    Gateway</h5>
+                  <span class="text-muted d-block" style="font-size: 10px;">Review items, apply secret promo, and pay
+                    securely</span>
+                </div>
+              </div>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"
+                id="checkout-modal-close"></button>
+            </div>
+
+            <!-- Forms Container Wrapper -->
+            <div id="checkout-modal-forms" class="w-100">
+              <form id="checkout-payment-form"
+                class="modal-body p-0 d-flex flex-column flex-lg-row bg-white m-0 border-0">
+
+                <!-- Left side: Delivery options & checkout forms (60% width on large) -->
+                <div class="p-4 flex-grow-1 border-end border-light text-start" style="flex-basis: 55%;">
+                  <h6
+                    class="text-uppercase text-muted fw-bold mb-3 d-flex align-items-center gap-2 pb-1.5 border-bottom"
+                    style="font-size: 10px; letter-spacing: 0.5px;">
+                    <i class="bi bi-geo-alt-fill text-danger"></i> Delivery Destination Address
+                  </h6>
+
+                  <!-- Profile summary block -->
+                  <div class="p-3 bg-light rounded-3 mb-3 text-start">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <strong class="text-dark small" id="checkout-user-name">Keshav Pandey</strong>
+                      <span class="badge bg-saffron text-white py-1"
+                        style="font-size: 9px; background-color: #ea580c;">Active Foodie</span>
+                    </div>
+                    <span class="text-muted d-block small" id="checkout-profile-contact">+91 91234 56789 |
+                      keshav@example.com</span>
+                    <div class="text-muted small mt-2 bg-white rounded p-2.5 border border-zinc-200 lh-base"
+                      id="checkout-user-address">
+                      Room 304, S.R. Institute of Management & Technology, Bakshi Ka Talab, Lucknow
+                    </div>
+                  </div>
+
+                  <!-- Custom instructions text area -->
+                  <div class="mb-4">
+                    <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+                      style="font-size: 9px; letter-spacing: 0.5px;">Delivery Instructions (Optional)</label>
+                    <textarea rows="2" id="checkout-instructions"
+                      placeholder="e.g. Ring doorbell, leave at main gate, call upon arrival..."
+                      class="form-control resize-none" style="font-size: 12px; line-height: 1.4;"></textarea>
+                  </div>
+
+                  <h6
+                    class="text-uppercase text-muted fw-bold mb-3 d-flex align-items-center gap-2 pb-1.5 border-bottom"
+                    style="font-size: 10px; letter-spacing: 0.5px;">
+                    <i class="bi bi-credit-card-2-front-fill text-primary"></i> Payment Method Selection
+                  </h6>
+
+                  <!-- Interactive payment options grid -->
+                  <div class="row g-2" id="checkout-payment-methods">
+                    <div class="col-6">
+                      <input type="radio" class="btn-check" name="paymentMethod" id="pay-select-upi" value="upi" checked
+                        autocomplete="off">
+                      <label
+                        class="btn btn-outline-dark w-100 py-3 px-2 rounded-3 text-start d-flex align-items-center gap-2 text-decoration-none"
+                        for="pay-select-upi" style="cursor: pointer; font-size: 12.5px;">
+                        <i class="bi bi-qr-code text-primary fs-5"></i>
+                        <div>
+                          <strong class="d-block text-dark font-display" style="font-size: 12px;">UPI / QR Code</strong>
+                          <span class="text-muted" style="font-size: 9px;">GPay, PhonePe, Paytm</span>
+                        </div>
+                      </label>
+                    </div>
+                    <div class="col-6">
+                      <input type="radio" class="btn-check" name="paymentMethod" id="pay-select-cod" value="cod"
+                        autocomplete="off">
+                      <label
+                        class="btn btn-outline-dark w-100 py-3 px-2 rounded-3 text-start d-flex align-items-center gap-2 text-decoration-none"
+                        for="pay-select-cod" style="cursor: pointer; font-size: 12.5px;">
+                        <i class="bi bi-wallet2 text-success fs-5"></i>
+                        <div>
+                          <strong class="d-block text-dark font-display" style="font-size: 12px;">Cash on
+                            Delivery</strong>
+                          <span class="text-muted" style="font-size: 9px;">Pay in cash at door</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Extra Form Inputs for dynamic payment selection support -->
+                  <div class="mt-3 d-none" id="pay-form-upi">
+                    <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+                      style="font-size: 9px; letter-spacing: 0.5px;">UPI ID</label>
+                    <input type="text" id="upi-id-input" placeholder="e.g. username@okhdfcbank" class="form-control"
+                      style="font-size: 12.5px;" />
+                  </div>
+                  <div class="mt-3 d-none" id="pay-form-cod">
+                    <div class="p-2.5 bg-success-subtle text-success border border-success-subtle rounded small w-100">
+                      <i class="bi bi-check-circle-fill me-1.5"></i>
+                      Cash on Delivery selected. You can pay cash, card, or UPI directly to the delivery rider at your
+                      doorstep.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right side: Bill breakdown & Coupon section (40% width) -->
+                <div class="p-4 bg-light d-flex flex-column justify-content-between text-start"
+                  style="flex-basis: 45%; background-color: #fafafa;">
+                  <div>
+                    <h6
+                      class="text-uppercase text-muted fw-bold mb-3 pb-1.5 border-bottom border-dark border-opacity-10"
+                      style="font-size: 10px; letter-spacing: 0.5px;">
+                      Order Invoice Summary
+                    </h6>
+
+                    <div class="checkout-scroll-area overflow-y-auto mb-3 pr-1" id="checkout-items-summary"
+                      style="max-height: 140px;">
+                      <!-- Dynamic inline receipt list -->
+                    </div>
+
+                    <!-- Nawabi Royal Coupon Section -->
+                    <div class="card p-2 border border-dashed rounded-3 mb-3 bg-white text-start">
+                      <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+                        style="font-size: 8px; letter-spacing: 0.5px;">Nawabi Promo Code</label>
+                      <div class="input-group">
+                        <input type="text" id="coupon-input"
+                          class="form-control form-control-sm border-end-0 py-2 text-uppercase fw-bold"
+                          placeholder="Enter SHAHI20 or LUCKNOW" style="font-size: 11.5px; letter-spacing: 0.5px;" />
+                        <button type="button" id="coupon-apply-btn"
+                          class="btn btn-sm btn-dark px-3 fw-bold border-start-0"
+                          style="font-size: 11px;">Apply</button>
+                      </div>
+                      <div id="coupon-feedback" class="small mt-1.5 fw-semibold d-none" style="font-size: 10.5px;">
+                        <!-- Feedback text generated dynamically -->
+                      </div>
+                    </div>
+
+                    <!-- Elaborate breakdown rows -->
+                    <div
+                      class="d-flex flex-column gap-1.5 border-top border-dark border-opacity-10 pt-3 small text-muted text-start">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span>Subtotal:</span>
+                        <strong class="text-dark" id="checkout-calc-subtotal">₹0</strong>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span>Royal Delivery Charge:</span>
+                        <strong class="text-dark" id="checkout-calc-delivery">₹0</strong>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span>Taxes & Fees:</span>
+                        <strong class="text-dark" id="checkout-calc-tax">₹0</strong>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center text-success fw-bold d-none"
+                        id="checkout-discount-row">
+                        <span>Discount (Promo):</span>
+                        <span id="checkout-calc-discount">-₹0</span>
+                      </div>
+
+                      <div
+                        class="d-flex justify-content-between align-items-center border-top pt-2.5 mt-2 text-dark font-display">
+                        <strong style="font-size: 13.5px;">Total Payable Amount:</strong>
+                        <strong class="text-saffron fs-5" id="checkout-calc-total" style="color: #ea580c;">₹0</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 pt-3 border-top border-dark border-opacity-10 text-start">
+                    <button type="submit" id="checkout-place-order-btn"
+                      class="btn btn-saffron w-100 py-3 fw-bold text-xs rounded-3 d-flex align-items-center justify-content-center gap-2">
+                      <i class="bi bi-shield-fill-check"></i>
+                      <span id="checkout-pay-btn-text">Authorize & Place Order</span>
+                    </button>
+                    <span class="text-muted text-center d-block mt-2" style="font-size: 9px;">UPI secure gateways
+                      process payments in standard RBI guidelines</span>
+                  </div>
+
+                </div>
+
+              </form>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+
+  <!-- ================= CONFLICT WARNING MODAL ================= -->
+  <div class="modal fade" id="conflict-modal" tabindex="-1" aria-labelledby="conflictModalLabel" aria-hidden="true"
+    style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg p-4 text-start">
+        <div class="rounded-3 bg-danger bg-opacity-10 d-flex align-items-center justify-content-center text-danger mb-3"
+          style="width: 48px; height: 48px;">
+          <i class="bi bi-shield-slash fs-4"></i>
+        </div>
+        <h5 class="font-display fw-bold text-dark mb-1" id="conflictModalLabel">Replace shopping bag?</h5>
+        <p class="text-muted small mb-4" style="line-height: 1.4;">
+          You already have items in your shopping bag from another Lucknow restaurant. Ordering from this kitchen will
+          discard your active selections.
+        </p>
+        <div class="row g-2">
+          <div class="col-6">
+            <button type="button" class="btn btn-sm btn-light border text-muted fw-bold w-100 py-2"
+              data-bs-dismiss="modal">Keep Existing</button>
+          </div>
+          <div class="col-6">
+            <button type="button" id="conflict-confirm-btn" class="btn btn-sm btn-saffron fw-bold w-100 py-2">Discard &
+              Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= CREATE CUSTOMER ACCOUNT MODAL ================= -->
+  <div class="modal fade" id="register-customer-modal" tabindex="-1" aria-labelledby="regCustomerLabel"
+    aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-person-plus-fill text-white"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="regCustomerLabel">Create Customer Profile
+              </h5>
+              <span class="text-muted d-block" style="font-size: 10px;">Register a new foodie account in Lucknow</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form id="reg-customer-form" class="modal-body p-4 d-flex flex-column gap-3 bg-white">
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Full Name</label>
+            <input type="text" id="reg-cust-name" required placeholder="e.g. Priya Sharma" class="form-control"
+              style="font-size: 13px;" />
+          </div>
+
+          <div class="row g-2">
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                  style="font-size: 9px; letter-spacing: 0.5px;">Email Address</label>
+                <input type="email" id="reg-cust-email" required placeholder="priya@example.com" class="form-control"
+                  style="font-size: 13px;" />
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                  style="font-size: 9px; letter-spacing: 0.5px;">Phone Number</label>
+                <input type="tel" id="reg-cust-phone" required placeholder="+91 98765 43210" class="form-control"
+                  style="font-size: 13px;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Locality / Delivery Area</label>
+            <select id="reg-cust-locality" class="form-select" style="font-size: 13px;">
+              <option value="Aminabad">Aminabad</option>
+              <option value="Hazratganj">Hazratganj</option>
+              <option value="Chowk">Chowk</option>
+              <option value="Gomti Nagar">Gomti Nagar</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Complete Lucknow Address</label>
+            <textarea rows="3" id="reg-cust-address" required
+              placeholder="Flat No, Wing, Society Name, Landmarks, Lucknow, Uttar Pradesh"
+              class="form-control resize-none" style="font-size: 12px; line-height: 1.4;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Account Password / PIN</label>
+            <input type="password" id="reg-cust-password" required placeholder="Create a secure login password"
+              class="form-control" style="font-size: 13px;" />
+          </div>
+
+          <button type="submit" class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2">
+            Register Foodie Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= REGISTER NEW RESTAURANT MODAL ================= -->
+  <div class="modal fade" id="register-restaurant-modal" tabindex="-1" aria-labelledby="regRestaurantLabel"
+    aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-egg-fried text-white"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="regRestaurantLabel">Register Awadhi
+                Kitchen</h5>
+              <span class="text-muted d-block" style="font-size: 10px;">Add your restaurant to Lakhnawi Bites
+                network</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form id="reg-restaurant-form" class="modal-body p-4 d-flex flex-column gap-3 bg-white">
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Restaurant Name</label>
+            <input type="text" id="reg-rest-name" required placeholder="e.g. Naushijaan, Wahid Biryani"
+              class="form-control" style="font-size: 13px;" />
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Tagline / Short Description</label>
+            <input type="text" id="reg-rest-desc" required
+              placeholder="e.g. Master chefs serving authentic Seekh Kebabs and Roomali rotis." class="form-control"
+              style="font-size: 13px;" />
+          </div>
+
+          <div class="row g-2">
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                  style="font-size: 9px; letter-spacing: 0.5px;">Locality</label>
+                <select id="reg-rest-locality" class="form-select" style="font-size: 13px;">
+                  <option value="Aminabad">Aminabad</option>
+                  <option value="Hazratganj">Hazratganj</option>
+                  <option value="Chowk">Chowk</option>
+                  <option value="Gomti Nagar">Gomti Nagar</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                  style="font-size: 9px; letter-spacing: 0.5px;">Delivery Fee (₹)</label>
+                <input type="number" id="reg-rest-fee" required min="0" placeholder="40" class="form-control"
+                  style="font-size: 13px;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Detailed Kitchen Address</label>
+            <textarea rows="2" id="reg-rest-address" required
+              placeholder="Naaz Cinema Road, Aminabad, Lucknow, Uttar Pradesh" class="form-control resize-none"
+              style="font-size: 12px; line-height: 1.4;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Banner Image URL</label>
+            <input type="url" id="reg-rest-banner" placeholder="e.g. https://images.unsplash.com/..."
+              class="form-control" style="font-size: 12.5px;" />
+            <span class="text-muted d-block mt-1" style="font-size: 9px;">Leave empty for beautiful pre-selected Awadhi
+              banner.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Kitchen Access Password</label>
+            <input type="password" id="reg-rest-password" required placeholder="Create a password for kitchen access"
+              class="form-control" style="font-size: 13px;" />
+          </div>
+
+          <button type="submit" class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2">
+            Register Kitchen Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= SECURITY AUTHENTICATION MODAL ================= -->
+  <div class="modal fade" id="auth-modal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true"
+    style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-shield-lock-fill text-white"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="authModalLabel">Identity Verification</h5>
+              <span class="text-muted d-block" style="font-size: 10px;">Please enter account password to log in</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body p-4 bg-white d-flex flex-column gap-3 text-start">
+          <div class="text-center py-2 bg-light rounded mb-1 px-3">
+            <span class="text-muted d-block text-uppercase fw-bold"
+              style="font-size: 9px; letter-spacing: 0.5px;">Authenticating Account</span>
+            <span class="fw-bold text-dark font-display" id="auth-target-name" style="font-size: 15px;">-</span>
+          </div>
+
+          <!-- VIEW 1: Standard Password Login -->
+          <form id="auth-login-form" class="d-flex flex-column gap-3">
+            <div class="form-group">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="text-uppercase text-muted fw-bold m-0"
+                  style="font-size: 9px; letter-spacing: 0.5px;">Password / Security PIN</label>
+                <a href="#" id="auth-forgot-link" class="text-saffron text-decoration-none fw-semibold"
+                  style="font-size: 11px; color: #ea580c;">Forgot Password?</a>
+              </div>
+              <div class="input-group">
+                <input type="password" id="auth-password-input" required placeholder="Enter password (default: 1234)"
+                  class="form-control border-end-0" style="font-size: 13px;" />
+                <button type="button" class="btn btn-outline-secondary border-start-0" id="auth-password-toggle"
+                  style="border-color: #dee2e6;">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback d-none text-danger mt-1.5 fw-semibold" id="auth-error-msg"
+                style="font-size: 11px;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> Incorrect password. Please try again!
+              </div>
+            </div>
+
+            <button type="submit"
+              class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2 d-flex align-items-center justify-content-center gap-2">
+              <i class="bi bi-shield-check"></i>
+              <span>Verify & Enter Portal</span>
+            </button>
+          </form>
+
+          <!-- VIEW 2: Identity Verification (Forgot Password) -->
+          <form id="auth-forgot-form" class="d-none flex-column gap-3">
+            <div class="p-2.5 bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded small mb-1">
+              <i class="bi bi-info-circle-fill me-1.5"></i>
+              To reset password, enter your registered email & phone number.
+            </div>
+
+            <div class="form-group">
+              <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                style="font-size: 9px; letter-spacing: 0.5px;">Registered Email</label>
+              <input type="email" id="auth-forgot-email" required placeholder="example@gmail.com" class="form-control"
+                style="font-size: 13px;" />
+            </div>
+
+            <div class="form-group">
+              <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                style="font-size: 9px; letter-spacing: 0.5px;">Registered Phone Number</label>
+              <input type="tel" id="auth-forgot-phone" required placeholder="+91 91234 56789" class="form-control"
+                style="font-size: 13px;" />
+            </div>
+
+            <div id="auth-forgot-error" class="text-danger mt-1.5 fw-semibold d-none" style="font-size: 11px;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i> Details do not match our records!
+            </div>
+
+            <div class="row g-2 pt-2">
+              <div class="col-5">
+                <button type="button" id="auth-forgot-back"
+                  class="btn btn-sm btn-light border text-muted w-100 py-2 fw-bold"
+                  style="font-size: 12px;">Cancel</button>
+              </div>
+              <div class="col-7">
+                <button type="submit" class="btn btn-sm btn-saffron w-100 py-2 fw-bold" style="font-size: 12px;">Verify
+                  Identity</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- VIEW 3: Choose New Password -->
+          <form id="auth-reset-form" class="d-none flex-column gap-3">
+            <div class="p-2.5 bg-success-subtle text-success border border-success-subtle rounded small mb-1">
+              <i class="bi bi-shield-check-fill me-1.5"></i>
+              Identity Verified! Set your new password below.
+            </div>
+
+            <div class="form-group">
+              <label class="text-uppercase text-muted fw-bold d-block mb-1"
+                style="font-size: 9px; letter-spacing: 0.5px;">New Password / PIN</label>
+              <input type="password" id="auth-reset-password" required placeholder="Enter new secure password"
+                class="form-control" style="font-size: 13px;" />
+            </div>
+
+            <button type="submit"
+              class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2 d-flex align-items-center justify-content-center gap-2">
+              <i class="bi bi-check2-circle"></i>
+              <span>Save Password & Log In</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= RESTAURANT PASSWORD MODAL ================= -->
+  <div class="modal fade" id="rest-password-modal" tabindex="-1" aria-labelledby="restPasswordModalLabel"
+    aria-hidden="true" style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-key-fill text-white"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="restPasswordModalLabel">Change Kitchen
+                Password</h5>
+              <span class="text-muted d-block" style="font-size: 10px;">Update security credentials for your
+                kitchen</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form id="rest-password-change-form" class="modal-body p-4 d-flex flex-column gap-3 bg-white text-start">
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">Current Password</label>
+            <input type="password" id="rest-curr-password" required placeholder="Enter current password"
+              class="form-control" style="font-size: 13px;" />
+          </div>
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1"
+              style="font-size: 9px; letter-spacing: 0.5px;">New Password</label>
+            <input type="password" id="rest-new-password" required placeholder="Enter new password" class="form-control"
+              style="font-size: 13px;" />
+          </div>
+
+          <div id="rest-pass-error-msg" class="text-danger small d-none fw-semibold">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> Current password does not match!
+          </div>
+          <div id="rest-pass-success-msg" class="text-success small d-none fw-semibold">
+            <i class="bi bi-check-circle-fill me-1"></i> Kitchen password updated successfully!
+          </div>
+
+          <button type="submit"
+            class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2 d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-save"></i>
+            <span>Save New Password</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= ORDER DETAILS MODAL ================= -->
+  <div class="modal fade" id="order-details-modal" tabindex="-1" aria-labelledby="orderDetailsModalLabel"
+    aria-hidden="true" style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-receipt-cutoff text-white fs-5"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="orderDetailsModalLabel">Royal Order
+                Invoice</h5>
+              <span class="text-muted d-block font-mono" id="detail-order-id" style="font-size: 11px;">Order #...</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body p-4 bg-white">
+          <!-- Header info: Restaurant & Status -->
+          <div class="d-flex justify-content-between align-items-start bg-light rounded p-3 mb-4">
+            <div>
+              <span class="text-uppercase text-muted fw-bold d-block"
+                style="font-size: 8px; letter-spacing: 0.5px;">Eatery Kitchen</span>
+              <strong class="text-dark font-display fs-6" id="detail-restaurant-name">-</strong>
+              <span class="text-muted d-block small mt-0.5" id="detail-order-date">-</span>
+            </div>
+            <div class="text-end">
+              <span class="text-uppercase text-muted fw-bold d-block mb-1"
+                style="font-size: 8px; letter-spacing: 0.5px;">Status</span>
+              <span class="badge px-2.5 py-1.5 text-uppercase" id="detail-order-status"
+                style="font-size: 10px;">-</span>
+            </div>
+          </div>
+
+          <!-- Items section -->
+          <div class="mb-4">
+            <h6 class="text-uppercase text-muted fw-bold mb-2.5 pb-1 border-bottom"
+              style="font-size: 10px; letter-spacing: 0.5px;">Culinary Line Items</h6>
+            <div id="detail-items-container" class="d-flex flex-column gap-2">
+              <!-- Dynamic items list -->
+            </div>
+          </div>
+
+          <!-- Bill details section -->
+          <div class="bg-light rounded p-3 mb-4 text-start">
+            <h6 class="text-uppercase text-muted fw-bold mb-2.5 pb-1 border-bottom"
+              style="font-size: 9px; letter-spacing: 0.5px;">Royal Bill Breakdown</h6>
+
+            <div class="d-flex justify-content-between align-items-center mb-1.5 small text-muted">
+              <span>Subtotal:</span>
+              <span class="fw-semibold text-dark" id="detail-subtotal">₹0</span>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1.5 small text-muted">
+              <span>Royal Delivery Fee:</span>
+              <span class="fw-semibold text-dark" id="detail-delivery">₹0</span>
+            </div>
+
+            <!-- Detailed Tax Breakdown -->
+            <div class="ps-2 border-start border-2 border-dashed border-light-subtle mb-1.5">
+              <div class="d-flex justify-content-between align-items-center mb-1 text-muted" style="font-size: 11px;">
+                <span>CGST (2.5%):</span>
+                <span id="detail-cgst">₹0</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-1 text-muted" style="font-size: 11px;">
+                <span>SGST (2.5%):</span>
+                <span id="detail-sgst">₹0</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center text-muted" style="font-size: 11px;">
+                <span>Restaurant Packaging Charge:</span>
+                <span id="detail-packaging">₹0</span>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2.5 small text-muted d-none"
+              id="detail-discount-row">
+              <span class="text-success fw-semibold">Discount Applied:</span>
+              <span class="text-success fw-bold" id="detail-discount">-₹0</span>
+            </div>
+
+            <div
+              class="d-flex justify-content-between align-items-center pt-2.5 border-top border-dark border-opacity-10">
+              <strong class="text-dark font-display" style="font-size: 14px;">Total Amount Paid:</strong>
+              <strong class="text-saffron font-display fs-5" id="detail-total" style="color: #ea580c;">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Delivery and Payment Info -->
+          <div class="border rounded p-3 mb-2 small text-muted">
+            <div class="mb-2">
+              <strong class="text-dark d-block mb-1 font-display" style="font-size: 11px;"><i
+                  class="bi bi-geo-alt-fill text-danger me-1"></i> Delivery Address</strong>
+              <span id="detail-address">-</span>
+            </div>
+            <div>
+              <strong class="text-dark d-block mb-1 font-display" style="font-size: 11px;"><i
+                  class="bi bi-credit-card-2-front me-1 text-primary"></i> Payment Method</strong>
+              <span id="detail-payment-method" class="text-uppercase">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-between align-items-center">
+          <span class="text-muted" style="font-size: 10px;">Thank you for ordering with us!</span>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-dark px-3 rounded-2" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LEAVE RATE & REVIEW MODAL ================= -->
+  <div class="modal fade" id="rate-review-modal" tabindex="-1" aria-labelledby="rateReviewModalLabel" aria-hidden="true"
+    style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+      <div class="modal-content overflow-hidden border-0 rounded-4 shadow-lg text-start">
+        <div class="modal-header bg-dark text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-circle bg-saffron text-white d-flex align-items-center justify-content-center"
+              style="width: 38px; height: 38px; background-color: #ea580c;">
+              <i class="bi bi-star-fill text-white"></i>
+            </div>
+            <div>
+              <h5 class="modal-title font-display fw-bold text-white m-0" id="rateReviewModalLabel">Write a Royal Review
+              </h5>
+              <span class="text-muted d-block font-sans" style="font-size: 10px;" id="review-modal-subtitle">Share your
+                experience with Lakhnawi Bites</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form id="rate-review-form" class="modal-body p-4 bg-white d-flex flex-column gap-4 text-start">
+          <input type="hidden" id="review-restaurant-id" />
+          <input type="hidden" id="review-order-id" />
+
+          <!-- Star rating select group -->
+          <div class="text-center">
+            <span class="text-uppercase text-muted fw-bold d-block mb-2"
+              style="font-size: 9px; letter-spacing: 0.5px;">Select Rating</span>
+            <div class="d-flex align-items-center justify-content-center gap-2" id="star-rating-container"
+              style="font-size: 28px;">
+              <i class="bi bi-star star-btn text-secondary" style="cursor: pointer;" data-val="1"></i>
+              <i class="bi bi-star star-btn text-secondary" style="cursor: pointer;" data-val="2"></i>
+              <i class="bi bi-star star-btn text-secondary" style="cursor: pointer;" data-val="3"></i>
+              <i class="bi bi-star star-btn text-secondary" style="cursor: pointer;" data-val="4"></i>
+              <i class="bi bi-star star-btn text-secondary" style="cursor: pointer;" data-val="5"></i>
+            </div>
+            <input type="hidden" id="review-rating-value" required value="" />
+            <span class="text-muted small mt-2 d-block" id="rating-text-feedback">Choose 1 to 5 stars</span>
+          </div>
+
+          <!-- Textarea for written review -->
+          <div class="form-group">
+            <label class="text-uppercase text-muted fw-bold d-block mb-1.5"
+              style="font-size: 9px; letter-spacing: 0.5px;">Your Written Review</label>
+            <textarea rows="4" id="review-text-input" required
+              placeholder="Tell us about the taste, quality, packaging, and delivery..." class="form-control"
+              style="font-size: 12.5px; line-height: 1.4; border-radius: 8px;"></textarea>
+          </div>
+
+          <div id="review-error-msg" class="text-danger small d-none fw-semibold">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> Please pick a rating and write a brief review.
+          </div>
+
+          <div id="review-success-msg"
+            class="text-success small d-none fw-semibold text-center p-2 bg-success-subtle rounded border border-success-subtle">
+            <i class="bi bi-check-circle-fill me-1"></i> Review posted! Thank you for sharing your Nawabi taste!
+          </div>
+
+          <button type="submit"
+            class="btn btn-saffron w-100 py-2.5 fw-bold text-xs rounded-3 mt-2 d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-pencil-square"></i>
+            <span>Submit Foodie Review</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+
+  <footer class="bg-dark text-white border-top mt-auto py-5">
+    <div class="container">
+      <div class="row g-4 text-start">
+
+        <div class="col-md-4">
+          <div class="d-flex align-items-center gap-2.5 mb-3">
+            <div class="bg-saffron text-white rounded d-flex align-items-center justify-content-center"
+              style="width: 40px; height: 40px; background-color: #ea580c;">
+              <i class="bi bi-egg-fried fs-4"></i>
+            </div>
+            <span class="text-lg font-display fw-black text-white">
+              Lakhnawi <span class="text-saffron" style="color: #ea580c;">Bites</span>
+            </span>
+          </div>
+          <p class="text-muted small m-0 lh-base" style="max-width: 320px;">
+            Authentic food discovery and live tracked delivery engine celebrating Lucknow's elite culinary, street chat,
+            kebabs, and dessert heritage.
+          </p>
+        </div>
+
+        <div class="col-md-4">
+          <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size: 10px; letter-spacing: 1px;">
+            Lucknow Regions Covered
+          </h6>
+          <ul class="list-unstyled text-muted small d-flex flex-column gap-1.5 fw-medium">
+            <li>● Hazratganj Crossing (Nawabi Core)</li>
+            <li>● Aminabad Park Area (Kebab Landmarks)</li>
+            <li>● Chowk (Ancient Awadhi Street Foods)</li>
+            <li>● Gomti Nagar (Modern Residencies & Offices)</li>
+          </ul>
+        </div>
+
+        <div class="col-md-4">
+          <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size: 10px; letter-spacing: 1px;">
+            Security Assurance
+          </h6>
+          <p class="text-muted small mb-3 lh-base">
+            All transactions processed through Lakhnawi Bites secure gateways utilize certified financial integrations
+            protecting customer assets.
+          </p>
+          <div class="d-flex gap-3 text-uppercase text-muted fw-bold" style="font-size: 9px; letter-spacing: 0.5px;">
+            <span> PCI-DSS</span>
+            <span> 256-BIT SSL</span>
+            <span> UPI SECURE</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="border-top border-secondary border-opacity-10 mt-5 pt-4 text-center text-muted small">
+        Copyright 2026 Lakhnawi Bites | All Rights Reserved. Crafted for IBM
+      </div>
+    </div>
+  </footer>
+
+  </div>
+
+
+  <script type="module" src="/src/main.js"></script>
+
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+  <script>window.ACTIVE_PAGE_ROUTE = 'portal-landing';</script>
+</body>
+
+</html>

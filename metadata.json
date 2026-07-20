@@ -1,0 +1,6 @@
+{
+  "name": "Lakhnawi Bites",
+  "description": "Premium food ordering website celebrating Lucknow's culinary heritage, featuring multiple restaurants, responsive menu, cart, secure payment, profile history, and live order tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
