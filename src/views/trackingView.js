@@ -1,3 +1,13 @@
+import { state } from "../state.js";
+import { navigateTo } from "../render.js";
+
+const googleMapNodes = [
+  { name: "Aminabad Old Market", position: { lat: 26.8415, lng: 80.9248 } },
+  { name: "Hazratganj Crossing", position: { lat: 26.8510, lng: 80.9440 } },
+  { name: "Gomti River Bridge", position: { lat: 26.8568, lng: 80.9632 } },
+  { name: "Gomti Nagar (Your Residence)", position: { lat: 26.8600, lng: 81.0000 } }
+];
+
 export const trackingView = `
         <!-- ================= ORDER TRACKING VIEW ================= -->
         <div id="tracking-view" class="container py-4 d-none">
@@ -156,3 +166,262 @@ export const trackingView = `
           </div>
         </div>
 `;
+
+export function renderOrderTracking() {
+  const order = state.orderHistory.find(o => o.id === state.activeOrderId);
+  if (!order) {
+    navigateTo('home');
+    return;
+  }
+
+  const deliveryAddressEl = document.getElementById("tracking-delivery-address");
+  if (deliveryAddressEl) {
+    deliveryAddressEl.innerText = order.restaurantId === "idris-chowk" 
+      ? "Chowk Road crossing, Hazratganj Bypass, Lucknow, UP." 
+      : "Aminabad Bypass, Gomti Nagar Crossing, Lucknow, UP.";
+  }
+
+  const ffBtn = document.getElementById("tracking-fast-forward");
+  if (ffBtn) {
+    if (order.status === "delivered") {
+      ffBtn.disabled = true;
+      ffBtn.classList.add('disabled', 'opacity-50');
+    } else {
+      ffBtn.disabled = false;
+      ffBtn.classList.remove('disabled', 'opacity-50');
+    }
+  }
+
+  const rateBtn = document.getElementById("tracking-rate-btn");
+  if (rateBtn) {
+    if (order.status === "delivered") {
+      rateBtn.classList.remove('d-none');
+      rateBtn.classList.add('d-flex');
+      rateBtn.onclick = () => {
+        const inputRestId = document.getElementById("review-restaurant-id");
+        const inputOrderId = document.getElementById("review-order-id");
+        const modalSubtitle = document.getElementById("review-modal-subtitle");
+        
+        if (inputRestId) inputRestId.value = order.restaurantId;
+        if (inputOrderId) inputOrderId.value = order.id;
+        if (modalSubtitle) modalSubtitle.innerText = `Share your experience with ${order.restaurantName}`;
+
+        const stars = document.querySelectorAll("#star-rating-container .star-btn");
+        stars.forEach(s => {
+          s.className = "bi bi-star star-btn text-secondary";
+        });
+        
+        const ratingValue = document.getElementById("review-rating-value");
+        if (ratingValue) ratingValue.value = "";
+
+        const textFeedback = document.getElementById("rating-text-feedback");
+        if (textFeedback) textFeedback.innerText = "Choose 1 to 5 stars";
+
+        const textInput = document.getElementById("review-text-input");
+        if (textInput) textInput.value = "";
+
+        const errMsg = document.getElementById("review-error-msg");
+        if (errMsg) errMsg.classList.add("d-none");
+        const successMsg = document.getElementById("review-success-msg");
+        if (successMsg) successMsg.classList.add("d-none");
+
+        const modalEl = document.getElementById("rate-review-modal");
+        if (modalEl) {
+          const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+          modalInstance.show();
+        }
+      };
+    } else {
+      rateBtn.classList.add('d-none');
+      rateBtn.classList.remove('d-flex');
+    }
+  }
+
+  const etaVal = document.getElementById("tracking-eta-val");
+  const statusBadge = document.getElementById("tracking-status-badge");
+  
+  if (etaVal) {
+    if (order.status === "delivered") {
+      etaVal.innerText = "Arrived!";
+    } else if (order.status === "dispatched") {
+      etaVal.innerText = "12 Mins";
+    } else if (order.status === "preparing") {
+      etaVal.innerText = "20 Mins";
+    } else {
+      etaVal.innerText = "30 Mins";
+    }
+  }
+
+  if (statusBadge) {
+    statusBadge.innerText = order.status;
+    statusBadge.className = `badge border text-uppercase ${
+      order.status === 'delivered' ? 'bg-success' : 'bg-dark'
+    }`;
+  }
+
+  const stepsDef = ['confirmed', 'preparing', 'dispatched', 'delivered'];
+  const activeIdx = stepsDef.indexOf(order.status);
+
+  for (let i = 1; i <= 4; i++) {
+    const idx = i - 1;
+    const stepEl = document.getElementById(`tracking-step-${i}`);
+    if (stepEl) {
+      const node = stepEl.querySelector('.step-node');
+      const title = stepEl.querySelector('.step-title');
+      
+      if (node && title) {
+        if (idx < activeIdx) {
+          node.className = "step-node rounded-3 d-flex align-items-center justify-content-center border shrink-0 bg-danger border-danger text-white";
+          title.className = "fw-bold mb-1 step-title text-dark";
+        } else if (idx === activeIdx) {
+          node.className = "step-node rounded-3 d-flex align-items-center justify-content-center border shrink-0 bg-dark border-dark text-white shadow";
+          title.className = "fw-bold mb-1 step-title text-danger";
+        } else {
+          node.className = "step-node rounded-3 d-flex align-items-center justify-content-center border shrink-0 bg-white text-muted border-secondary-subtle";
+          title.className = "fw-bold mb-1 step-title text-muted";
+        }
+      }
+    }
+  }
+
+  setTimeout(() => {
+    initializeTrackingMap(order);
+  }, 100);
+}
+
+function getRiderLatLng(status) {
+  switch (status) {
+    case "confirmed":
+      return { lat: 26.8415, lng: 80.9248 };
+    case "preparing":
+      return { lat: 26.8462, lng: 80.9344 };
+    case "dispatched":
+      return { lat: 26.8568, lng: 80.9632 };
+    case "delivered":
+      return { lat: 26.8600, lng: 81.0000 };
+    default:
+      return { lat: 26.8415, lng: 80.9248 };
+  }
+}
+
+function initializeTrackingMap(order) {
+  const container = document.getElementById('map-container');
+  if (!container) return;
+
+  const riderLatLng = getRiderLatLng(order.status);
+  const activeStepIdx = ['confirmed', 'preparing', 'dispatched', 'delivered'].indexOf(order.status);
+
+  if (state.mapInstance) {
+    state.mapMarkers.forEach(m => m.remove());
+    state.mapMarkers = [];
+    if (state.mapPolyline) state.mapPolyline.remove();
+    if (state.mapRiderMarker) state.mapRiderMarker.remove();
+
+    state.mapInstance.panTo([riderLatLng.lat, riderLatLng.lng]);
+  } else {
+    state.mapInstance = window.L.map(container, {
+      center: [26.8510, 80.9550],
+      zoom: 13,
+      zoomControl: true,
+      scrollWheelZoom: false,
+    });
+
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(state.mapInstance);
+  }
+
+  googleMapNodes.forEach((node, idx) => {
+    const isCompletedOrActive = idx <= activeStepIdx;
+    const markerColor = isCompletedOrActive ? "#ea580c" : "#71717a";
+    const markerBorder = isCompletedOrActive ? "#ffffff" : "#e4e4e7";
+
+    const customIcon = window.L.divIcon({
+      html: `
+        <div style="
+          width: 16px; 
+          height: 16px; 
+          background-color: ${markerColor}; 
+          border: 2px solid ${markerBorder}; 
+          border-radius: 50%; 
+          box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="width: 4px; height: 4px; background-color: white; border-radius: 50%;"></div>
+        </div>
+      `,
+      className: 'custom-leaflet-node-icon',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    const marker = window.L.marker([node.position.lat, node.position.lng], { icon: customIcon })
+      .addTo(state.mapInstance)
+      .bindPopup(`
+        <div class="p-1 font-sans text-xs">
+          <strong class="text-zinc-950 block font-bold" style="font-size: 11.5px; color:#18181b;">${node.name}</strong>
+          <span class="text-muted" style="font-size: 9.5px;">${idx === 0 ? "Starting Kitchen" : idx === googleMapNodes.length - 1 ? "Delivery Destination" : "Transit Waypoint"}</span>
+        </div>
+      `);
+    
+    state.mapMarkers.push(marker);
+  });
+
+  const latlngs = googleMapNodes.map(n => [n.position.lat, n.position.lng]);
+  state.mapPolyline = window.L.polyline(latlngs, {
+    color: "#ea580c",
+    weight: 4,
+    opacity: 0.8,
+    dashArray: "6, 6"
+  }).addTo(state.mapInstance);
+
+  const riderIcon = window.L.divIcon({
+    html: `
+      <div style="
+        width: 32px;
+        height: 32px;
+        background-color: #ea580c;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 4px 10px rgba(234, 88, 12, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        animation: pulse-ring-leaflet 1.5s infinite;
+      ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="3" width="15" height="13"></rect>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+          <circle cx="5.5" cy="18.5" r="2.5"></circle>
+          <circle cx="18.5" cy="18.5" r="2.5"></circle>
+        </svg>
+      </div>
+      <style>
+        @keyframes pulse-ring-leaflet {
+          0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); }
+          70% { box-shadow: 0 0 0 8px rgba(234, 88, 12, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+        }
+      </style>
+    `,
+    className: 'custom-leaflet-rider-icon',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+
+  state.mapRiderMarker = window.L.marker([riderLatLng.lat, riderLatLng.lng], { icon: riderIcon })
+    .addTo(state.mapInstance)
+    .bindPopup(`
+      <div class="p-1 font-sans text-xs">
+        <strong class="text-zinc-950 block font-bold" style="font-size: 11px; color:#18181b;">Ramesh Kumar (Your Rider)</strong>
+        <span class="text-danger fw-bold" style="font-size: 9.5px;">On the way with your Awadhi meal!</span>
+      </div>
+    `);
+
+  state.mapInstance.panTo([riderLatLng.lat, riderLatLng.lng]);
+}

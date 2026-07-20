@@ -1,3 +1,6 @@
+import { state } from "../state.js";
+import { navigateTo } from "../render.js";
+
 export const profileView = `
         <!-- ================= USER PROFILE VIEW ================= -->
         <div id="profile-view" class="container py-5 d-none">
@@ -190,3 +193,250 @@ export const profileView = `
           </div>
         </div>
 `;
+
+export function openOrderDetailsModal(orderId) {
+  const order = state.orderHistory.find(o => o.id === orderId);
+  if (!order) return;
+
+  const idEl = document.getElementById("detail-order-id");
+  const restNameEl = document.getElementById("detail-restaurant-name");
+  const dateEl = document.getElementById("detail-order-date");
+  const statusEl = document.getElementById("detail-order-status");
+  const containerEl = document.getElementById("detail-items-container");
+  const subtotalEl = document.getElementById("detail-subtotal");
+  const deliveryEl = document.getElementById("detail-delivery");
+  const cgstEl = document.getElementById("detail-cgst");
+  const sgstEl = document.getElementById("detail-sgst");
+  const packagingEl = document.getElementById("detail-packaging");
+  const discountRow = document.getElementById("detail-discount-row");
+  const discountEl = document.getElementById("detail-discount");
+  const totalEl = document.getElementById("detail-total");
+  const addressEl = document.getElementById("detail-address");
+  const paymentEl = document.getElementById("detail-payment-method");
+
+  if (idEl) idEl.innerText = `Order #${order.id.toUpperCase()}`;
+  if (restNameEl) restNameEl.innerText = order.restaurantName;
+  if (dateEl) dateEl.innerText = order.date;
+
+  if (statusEl) {
+    statusEl.innerText = order.status;
+    statusEl.className = "badge px-2.5 py-1.5 text-uppercase ";
+    if (order.status === 'delivered') {
+      statusEl.classList.add("bg-success-subtle", "text-success", "border", "border-success-subtle");
+    } else {
+      statusEl.classList.add("bg-danger", "text-white", "animate-pulse");
+    }
+  }
+
+  if (containerEl) {
+    containerEl.innerHTML = order.items.map(item => `
+      <div class="d-flex align-items-center justify-content-between py-2.5 border-bottom border-light">
+        <div class="d-flex align-items-center gap-2.5">
+          <span class="d-inline-flex align-items-center justify-content-center border rounded" 
+                style="width: 14px; height: 14px; padding: 2px; border-color: ${item.menuItem.isVeg ? '#22c55e' : '#ef4444'};">
+            <span class="rounded-circle" style="width: 6px; height: 6px; background-color: ${item.menuItem.isVeg ? '#22c55e' : '#ef4444'};"></span>
+          </span>
+          <div>
+            <span class="fw-bold text-dark font-display" style="font-size: 13.5px;">${item.menuItem.name}</span>
+            <span class="text-muted d-block font-mono" style="font-size: 11px;">₹${item.menuItem.price} &times; ${item.quantity}</span>
+          </div>
+        </div>
+        <strong class="text-dark font-sans" style="font-size: 13.5px;">₹${item.menuItem.price * item.quantity}</strong>
+      </div>
+    `).join('');
+  }
+
+  const gstRate = 0.05;
+  const calculatedGst = order.subtotal * gstRate;
+  const cgst = calculatedGst / 2;
+  const sgst = calculatedGst / 2;
+  const packagingCharge = Math.max(0, order.taxAndFees - calculatedGst);
+
+  if (subtotalEl) subtotalEl.innerText = `₹${order.subtotal}`;
+  if (deliveryEl) deliveryEl.innerText = `₹${order.deliveryFee}`;
+  if (cgstEl) cgstEl.innerText = `₹${cgst.toFixed(2)}`;
+  if (sgstEl) sgstEl.innerText = `₹${sgst.toFixed(2)}`;
+  if (packagingEl) packagingEl.innerText = `₹${packagingCharge.toFixed(2)}`;
+
+  if (order.discount > 0) {
+    if (discountRow) discountRow.classList.remove("d-none");
+    if (discountEl) discountEl.innerText = `-₹${order.discount}`;
+  } else {
+    if (discountRow) discountRow.classList.add("d-none");
+  }
+
+  if (totalEl) totalEl.innerText = `₹${order.total}`;
+  if (addressEl) addressEl.innerText = state.userProfile.address || order.eta;
+  if (paymentEl) {
+    let pm = order.paymentMethod;
+    if (pm === 'cod') pm = 'Cash on Delivery';
+    else if (pm === 'card') pm = 'Credit / Debit Card';
+    else if (pm === 'upi') pm = 'UPI Payment';
+    paymentEl.innerText = pm;
+  }
+
+  const modalEl = document.getElementById("order-details-modal");
+  if (modalEl) {
+    const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+}
+
+export function renderProfile() {
+  const displayName = document.getElementById("profile-display-name");
+  const readEmail = document.getElementById("profile-read-email");
+  const readPhone = document.getElementById("profile-read-phone");
+  const readAddress = document.getElementById("profile-read-address");
+
+  if (displayName) displayName.innerText = state.userProfile.name;
+  if (readEmail) readEmail.innerHTML = `<i class="bi bi-envelope text-muted me-2"></i>${state.userProfile.email}`;
+  if (readPhone) readPhone.innerHTML = `<i class="bi bi-telephone text-muted me-2"></i>${state.userProfile.phone}`;
+  if (readAddress) readAddress.innerHTML = `<i class="bi bi-geo-alt text-danger me-2"></i>${state.userProfile.address}`;
+
+  const countTitle = document.getElementById("profile-orders-count");
+  if (countTitle) countTitle.innerText = `${state.orderHistory.length} total orders`;
+
+  const list = document.getElementById("profile-orders-list");
+  if (!list) return;
+
+  if (state.orderHistory.length === 0) {
+    list.innerHTML = `
+      <div class="py-5 text-center bg-light border border-dashed rounded-3 p-4">
+        <i class="bi bi-receipt text-muted fs-2 mb-2 d-block"></i>
+        <h6 class="fw-bold text-dark mb-1">No orders found</h6>
+        <p class="text-muted small m-0 mb-3">You haven't placed any royal orders with Lakhnawi Bites yet!</p>
+        <button class="btn btn-sm btn-saffron rounded-pill px-4 profile-shop-now-btn">Order Now</button>
+      </div>
+    `;
+
+    list.querySelector('.profile-shop-now-btn')?.addEventListener('click', () => {
+      navigateTo('home');
+    });
+    return;
+  }
+
+  list.innerHTML = state.orderHistory.map(order => {
+    const isActive = order.status !== 'delivered';
+    const itemsText = order.items.map(item => `${item.menuItem.name} (${item.quantity})`).join(', ');
+
+    return `
+      <div class="card p-4 border rounded-3 text-start bg-white shadow-xs">
+        <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 border-bottom mb-3.5 gap-2">
+          <div>
+            <span class="badge bg-dark border text-uppercase font-mono text-[9px] me-2" style="font-size: 10px;">${order.id}</span>
+            <span class="text-muted small">${order.date}</span>
+          </div>
+          <span class="badge ${order.status === 'delivered' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-10' : 'bg-danger text-white animate-pulse'} px-2.5 py-1.5 text-uppercase" style="font-size: 11px;">
+            ${order.status}
+          </span>
+        </div>
+
+        <div class="mb-3.5 text-start">
+          <span class="text-uppercase text-muted fw-bold d-block mb-1" style="font-size: 8px; letter-spacing: 0.5px;">Eatery Kitchen</span>
+          <strong class="text-dark d-block font-display fs-6">${order.restaurantName}</strong>
+          <span class="text-muted small d-block mt-1">${itemsText}</span>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pt-3 border-top gap-3">
+          <div>
+            <span class="text-uppercase text-muted fw-bold d-block" style="font-size: 8px; letter-spacing: 0.5px;">Amount Paid</span>
+            <strong class="text-dark d-block fs-6 font-sans mt-0.5">₹${order.total}</strong>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-outline-secondary px-3.5 py-2 fw-semibold text-muted d-inline-flex align-items-center gap-1.5 rounded view-details-profile-btn" data-id="${order.id}">
+              <i class="bi bi-receipt"></i>
+              <span>View Invoice</span>
+            </button>
+
+            ${isActive ? `
+              <button class="btn btn-sm btn-saffron px-3.5 py-2 fw-bold d-inline-flex align-items-center gap-1.5 rounded tracking-profile-btn" data-id="${order.id}">
+                <i class="bi bi-geo-alt-fill text-white"></i>
+                <span>Live Track</span>
+              </button>
+            ` : `
+              <button class="btn btn-sm btn-warning bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10 px-3.5 py-2 fw-semibold d-inline-flex align-items-center gap-1.5 rounded rate-review-profile-btn" data-order-id="${order.id}" data-restaurant-id="${order.restaurantId}" data-restaurant-name="${order.restaurantName}">
+                <i class="bi bi-star-fill text-warning"></i>
+                <span>Rate & Review</span>
+              </button>
+              <button class="btn btn-sm btn-light border px-3.5 py-2 fw-semibold text-muted d-inline-flex align-items-center gap-1.5 rounded reorder-profile-btn" data-id="${order.restaurantId}">
+                <i class="bi bi-arrow-repeat"></i>
+                <span>Order Again</span>
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.view-details-profile-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const orderId = e.currentTarget.getAttribute('data-id');
+      if (orderId) {
+        openOrderDetailsModal(orderId);
+      }
+    });
+  });
+
+  list.querySelectorAll('.tracking-profile-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      state.activeOrderId = e.currentTarget.getAttribute('data-id');
+      saveState();
+      navigateTo('tracking');
+    });
+  });
+
+  list.querySelectorAll('.reorder-profile-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      state.selectedRestaurantId = e.currentTarget.getAttribute('data-id');
+      navigateTo('menu');
+    });
+  });
+
+  list.querySelectorAll('.rate-review-profile-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const btnEl = e.currentTarget;
+      const orderId = btnEl.getAttribute('data-order-id');
+      const restaurantId = btnEl.getAttribute('data-restaurant-id');
+      const restaurantName = btnEl.getAttribute('data-restaurant-name');
+
+      
+      const inputRestId = document.getElementById("review-restaurant-id");
+      const inputOrderId = document.getElementById("review-order-id");
+      const modalSubtitle = document.getElementById("review-modal-subtitle");
+      
+      if (inputRestId) inputRestId.value = restaurantId;
+      if (inputOrderId) inputOrderId.value = orderId;
+      if (modalSubtitle) modalSubtitle.innerText = `Share your experience with ${restaurantName}`;
+
+      
+      const stars = document.querySelectorAll("#star-rating-container .star-btn");
+      stars.forEach(s => {
+        s.className = "bi bi-star star-btn text-secondary";
+      });
+      
+      const ratingValue = document.getElementById("review-rating-value");
+      if (ratingValue) ratingValue.value = "";
+
+      const textFeedback = document.getElementById("rating-text-feedback");
+      if (textFeedback) textFeedback.innerText = "Choose 1 to 5 stars";
+
+      const textInput = document.getElementById("review-text-input");
+      if (textInput) textInput.value = "";
+
+      
+      const errMsg = document.getElementById("review-error-msg");
+      if (errMsg) errMsg.classList.add("d-none");
+      const successMsg = document.getElementById("review-success-msg");
+      if (successMsg) successMsg.classList.add("d-none");
+
+      
+      const modalEl = document.getElementById("rate-review-modal");
+      if (modalEl) {
+        const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+      }
+    });
+  });
+}

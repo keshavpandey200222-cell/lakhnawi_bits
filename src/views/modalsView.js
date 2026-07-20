@@ -1,3 +1,8 @@
+import { state, saveState, getCartRestaurant, getBillingDetails } from "../state.js";
+import { AVAILABLE_COUPONS } from "../data/restaurants.js";
+import { renderHeader } from "../render.js";
+import { renderMenu, updateCartQuantity } from "./menuView.js";
+
 export const modalsView = `
       <!-- ================= ROYAL CART OFFCANVAS DRAWER ================= -->
       <div class="offcanvas offcanvas-end border-0 shadow-lg text-start" tabindex="-1" id="cart-offcanvas" aria-labelledby="cartOffcanvasLabel" style="width: 420px; z-index: 1060;">
@@ -689,3 +694,172 @@ export const modalsView = `
         </div>
       </div>
 `;
+
+export function renderCartDrawer() {
+  const scrollContent = document.getElementById("cart-scroll-content");
+  const billingPanel = document.getElementById("cart-billing-panel");
+  if (!scrollContent || !billingPanel) return;
+
+  const activeRest = getCartRestaurant();
+
+  if (state.cartItems.length === 0) {
+    scrollContent.innerHTML = `
+      <div class="py-5 text-center my-4">
+        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3.5" style="width: 56px; height: 56px;">
+          <i class="bi bi-cart3 text-muted fs-4"></i>
+        </div>
+        <h6 class="font-display fw-bold text-dark mb-1">Your bag is empty</h6>
+        <p class="text-muted small mx-auto mb-4" style="max-width: 250px;">
+          Explore culinary kitchens to load your shopping bag with Lucknow's finest.
+        </p>
+        <button class="btn btn-sm btn-saffron rounded-pill px-4" data-bs-dismiss="offcanvas">
+          Browse Delicacies
+        </button>
+      </div>
+    `;
+    billingPanel.classList.add('d-none');
+    return;
+  }
+
+  billingPanel.classList.remove('d-none');
+
+  let itemsHTML = `
+    <!-- Restaurant Source Title Header -->
+    <div class="pb-3 border-bottom mb-4 text-start">
+      <span class="text-uppercase text-muted fw-bold d-block mb-1" style="font-size: 8px; letter-spacing: 0.5px;">Ordering Fresh From</span>
+      <h6 class="font-display fw-bold text-dark m-0 fs-6">${activeRest?.name}</h6>
+      <span class="text-muted small mt-0.5 d-inline-flex align-items-center gap-1">
+        <i class="bi bi-geo-alt-fill text-danger"></i>${activeRest?.locality}
+      </span>
+    </div>
+
+    <!-- Items Array list -->
+    <div class="d-flex flex-column gap-3.5 text-start">
+  `;
+
+  itemsHTML += state.cartItems.map(item => `
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <div class="text-start">
+        <strong class="d-block text-dark small font-display">${item.menuItem.name}</strong>
+        <span class="text-muted small font-sans">₹${item.menuItem.price} &times; ${item.quantity}</span>
+      </div>
+      
+      <!-- Stepper Controls -->
+      <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center border rounded bg-white p-0.5">
+          <button class="btn btn-sm btn-link text-decoration-none text-muted fw-bold p-0 px-2 border-0 bg-transparent cart-qty-btn" data-id="${item.menuItem.id}" data-change="-1">-</button>
+          <span class="small fw-bold px-1 text-dark" style="font-size: 12px;">${item.quantity}</span>
+          <button class="btn btn-sm btn-link text-decoration-none text-muted fw-bold p-0 px-2 border-0 bg-transparent cart-qty-btn" data-id="${item.menuItem.id}" data-change="1">+</button>
+        </div>
+        
+        <!-- Delete item trigger -->
+        <button class="btn btn-light rounded border p-0 d-flex align-items-center justify-content-center text-danger cart-delete-btn" 
+                data-id="${item.menuItem.id}" 
+                style="width: 28px; height: 28px; border: 0;">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  itemsHTML += `
+    </div>
+
+    <!-- Saffron Promo Coupons Area -->
+    <div class="mt-5 border-top pt-4 text-start">
+      <h6 class="text-uppercase text-muted fw-bold mb-2.5" style="font-size: 9px; letter-spacing: 0.5px;">Promo Code Offers</h6>
+      <div class="input-group input-group-sm">
+        <input type="text" id="cart-coupon-input" placeholder="Enter coupon (e.g. LUCKNOW100)" class="form-control" style="font-size: 11.5px;" value="${state.appliedCoupon ? state.appliedCoupon.code : ''}" ${state.appliedCoupon ? 'disabled' : ''}>
+        <button type="button" id="cart-coupon-apply" class="btn ${state.appliedCoupon ? 'btn-danger' : 'btn-dark'} fw-bold px-3">
+          ${state.appliedCoupon ? 'Remove' : 'Apply'}
+        </button>
+      </div>
+      <div id="cart-coupon-status" class="small mt-1.5 fw-semibold ${state.appliedCoupon ? 'text-success' : 'text-danger'}">
+        ${state.appliedCoupon ? `<i class="bi bi-check-circle-fill me-1"></i>Coupon "${state.appliedCoupon.code}" applied! Save ₹${getBillingDetails().discount}` : ''}
+      </div>
+    </div>
+  `;
+
+  scrollContent.innerHTML = itemsHTML;
+
+  const billing = getBillingDetails();
+  
+  const elSubtotal = document.getElementById("cart-calc-subtotal");
+  const elDiscountRow = document.getElementById("cart-discount-row");
+  const elDiscount = document.getElementById("cart-calc-discount");
+  const elDelivery = document.getElementById("cart-calc-delivery");
+  const elTax = document.getElementById("cart-calc-tax");
+  const elTotal = document.getElementById("cart-calc-total");
+
+  if (elSubtotal) elSubtotal.innerText = `₹${billing.subtotal}`;
+  
+  if (elDiscountRow && elDiscount) {
+    if (billing.discount > 0) {
+      elDiscountRow.classList.remove('d-none');
+      elDiscount.innerText = `-₹${billing.discount}`;
+    } else {
+      elDiscountRow.classList.add('d-none');
+    }
+  }
+
+  if (elDelivery) elDelivery.innerText = `₹${billing.deliveryFee}`;
+  if (elTax) elTax.innerText = `₹${billing.taxAndFees}`;
+  if (elTotal) elTotal.innerText = `₹${billing.total}`;
+
+  
+  scrollContent.querySelectorAll('.cart-qty-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.currentTarget;
+      const id = target.getAttribute('data-id') || '';
+      const change = parseInt(target.getAttribute('data-change') || '0');
+      updateCartQuantity(id, change);
+    });
+  });
+
+  scrollContent.querySelectorAll('.cart-delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.currentTarget;
+      const id = target.getAttribute('data-id') || '';
+      state.cartItems = state.cartItems.filter(c => c.menuItem.id !== id);
+      saveState();
+      renderMenu();
+      renderHeader();
+      renderCartDrawer();
+    });
+  });
+
+  
+  document.getElementById("cart-coupon-apply")?.addEventListener('click', () => {
+    if (state.appliedCoupon) {
+      state.appliedCoupon = null;
+      renderCartDrawer();
+      return;
+    }
+
+    const input = document.getElementById("cart-coupon-input");
+    const statusEl = document.getElementById("cart-coupon-status");
+    if (!input || !statusEl) return;
+
+    const code = input.value.toUpperCase().trim();
+    if (!code) return;
+
+    const coupon = AVAILABLE_COUPONS.find(c => c.code === code);
+    if (!coupon) {
+      statusEl.classList.remove('text-success');
+      statusEl.classList.add('text-danger');
+      statusEl.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>Invalid coupon code. Try "LUCKNOW100".`;
+      return;
+    }
+
+    const billingTemp = getBillingDetails();
+    if (billingTemp.subtotal < coupon.minOrder) {
+      statusEl.classList.remove('text-success');
+      statusEl.classList.add('text-danger');
+      statusEl.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i>Order amount must be above ₹${coupon.minOrder} to apply.`;
+      return;
+    }
+
+    state.appliedCoupon = coupon;
+    renderCartDrawer();
+  });
+}

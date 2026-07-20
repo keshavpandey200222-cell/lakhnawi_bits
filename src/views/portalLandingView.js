@@ -1,3 +1,5 @@
+import { state } from "../state.js";
+
 export const portalLandingView = `
         <!-- ================= PORTAL LANDING VIEW ================= -->
         <div id="portal-landing-view" class="container py-4 py-lg-5 d-block">
@@ -102,3 +104,20 @@ export const portalLandingView = `
           </div>
         </div>
 `;
+
+export function renderPortalLanding() {
+  const custSelect = document.getElementById("landing-customer-select");
+  const restSelect = document.getElementById("landing-restaurant-select");
+
+  if (custSelect) {
+    custSelect.innerHTML = state.customerProfiles.map(p => `
+      <option value="${p.id}" ${p.id === state.currentCustomerId ? 'selected' : ''}>${p.name} (${p.locality})</option>
+    `).join('');
+  }
+
+  if (restSelect) {
+    restSelect.innerHTML = state.restaurants.map(r => `
+      <option value="${r.id}" ${r.id === state.currentRestaurantId ? 'selected' : ''}>${r.name} (${r.locality})</option>
+    `).join('');
+  }
+}

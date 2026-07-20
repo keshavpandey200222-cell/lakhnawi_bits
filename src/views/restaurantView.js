@@ -1,3 +1,7 @@
+import { state, saveState } from "../state.js";
+import { navigateTo } from "../render.js";
+import { updateOrderStatusOnServer, updateMenuItemPriceOnServer, deleteMenuItemOnServer } from "../api.js";
+
 export const restaurantView = `
         <!-- ================= RESTAURANT OWNER WORKSPACE ================= -->
         <div id="restaurant-view" class="container py-4 py-lg-5 d-none text-start">
@@ -196,3 +200,271 @@ export const restaurantView = `
 
         </div>
 `;
+
+export function renderRestaurantWorkspace() {
+  const activeRest = state.restaurants.find(r => r.id === state.currentRestaurantId);
+  if (!activeRest) {
+    navigateTo('portal-landing');
+    return;
+  }
+
+  const titleEl = document.getElementById("rest-owner-title");
+  const descEl = document.getElementById("rest-owner-desc");
+  const bannerEl = document.getElementById("rest-owner-hero-img");
+
+  if (titleEl) titleEl.innerText = activeRest.name;
+  if (descEl) descEl.innerText = activeRest.description;
+  if (bannerEl) bannerEl.src = activeRest.banner;
+
+  const matchedOrders = state.orderHistory.filter(o => o.restaurantId === state.currentRestaurantId);
+  const pendingOrders = matchedOrders.filter(o => o.status !== 'delivered');
+  const revenue = matchedOrders.reduce((acc, o) => acc + o.total, 0);
+
+  const statOrders = document.getElementById("rest-stat-orders");
+  const statPending = document.getElementById("rest-stat-pending");
+  const statRevenue = document.getElementById("rest-stat-revenue");
+  const statMenuCount = document.getElementById("rest-stat-menu-count");
+
+  if (statOrders) statOrders.innerText = matchedOrders.length.toString();
+  if (statPending) statPending.innerText = pendingOrders.length.toString();
+  if (statRevenue) statRevenue.innerText = `₹${revenue}`;
+  if (statMenuCount) statMenuCount.innerText = activeRest.menu.length.toString();
+
+  const ordersListEl = document.getElementById("rest-orders-queue-list");
+  if (ordersListEl) {
+    if (matchedOrders.length === 0) {
+      ordersListEl.innerHTML = `
+        <div class="py-5 text-center bg-white border rounded-3 p-4">
+          <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 52px; height: 52px;">
+            <i class="bi bi-receipt text-muted fs-4"></i>
+          </div>
+          <h6 class="font-display fw-bold text-dark mb-1">No orders received yet</h6>
+          <p class="text-muted small mx-auto m-0" style="max-width: 320px;">
+            Once Lucknow foodies place orders for your kitchen, they will appear in real-time here.
+          </p>
+        </div>
+      `;
+    } else {
+      ordersListEl.innerHTML = matchedOrders.map(order => {
+        let statusBadge = "";
+        let actionBtn = "";
+
+        if (order.status === 'confirmed') {
+          statusBadge = `<span class="badge bg-warning text-dark fw-bold" style="font-size: 10px;">PENDING ACCEPTANCE</span>`;
+          actionBtn = `
+            <button class="btn btn-sm btn-saffron px-3 py-1.5 fw-bold rest-order-action-btn" data-order-id="${order.id}" data-action="accept">
+              Accept & Cook
+            </button>
+          `;
+        } else if (order.status === 'preparing') {
+          statusBadge = `<span class="badge bg-info text-dark fw-bold" style="font-size: 10px;">COOKING IN PROGRESS</span>`;
+          actionBtn = `
+            <button class="btn btn-sm btn-dark px-3 py-1.5 fw-bold rest-order-action-btn" data-order-id="${order.id}" data-action="dispatch">
+              Dispatch Order
+            </button>
+          `;
+        } else if (order.status === 'dispatched') {
+          statusBadge = `<span class="badge bg-primary text-white fw-bold" style="font-size: 10px;">OUT FOR DELIVERY</span>`;
+          actionBtn = `
+            <button class="btn btn-sm btn-success px-3 py-1.5 fw-bold rest-order-action-btn" data-order-id="${order.id}" data-action="deliver">
+              Mark Delivered
+            </button>
+          `;
+        } else {
+          statusBadge = `<span class="badge bg-success text-white fw-bold" style="font-size: 10px;">DELIVERED & CLOSED</span>`;
+          actionBtn = `<span class="text-muted small fw-semibold"><i class="bi bi-check-all text-success"></i> Completed</span>`;
+        }
+
+        const itemsSummary = order.items.map(item => `
+          <div class="d-flex justify-content-between align-items-center small py-1 border-bottom border-light">
+            <span class="text-dark fw-semibold">${item.menuItem.name} <span class="text-muted fw-normal">x${item.quantity}</span></span>
+            <span class="text-muted">₹${item.menuItem.price * item.quantity}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="card border rounded-3 p-4 bg-white shadow-xs">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pb-3 border-bottom border-light gap-3">
+              <div>
+                <strong class="text-dark font-sans d-block" style="font-size: 14px;">Order #${order.id}</strong>
+                <span class="text-muted small d-block mt-0.5"><i class="bi bi-clock me-1"></i>${order.date} | Payment: ${order.paymentMethod}</span>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                ${statusBadge}
+                <div class="rest-action-wrapper">
+                  ${actionBtn}
+                </div>
+              </div>
+            </div>
+            
+            <div class="row pt-3 g-3">
+              <div class="col-md-7">
+                <span class="text-uppercase text-muted fw-bold d-block mb-2" style="font-size: 8px; letter-spacing: 0.5px;">Ordered Recipes</span>
+                <div class="d-flex flex-column gap-1">
+                  ${itemsSummary}
+                  <div class="d-flex justify-content-between align-items-center mt-2 fw-bold text-dark small">
+                    <span>Total Bill (incl. Taxes)</span>
+                    <span style="font-size: 14px;">₹${order.total}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-5 bg-light p-3 rounded-3 border">
+                <span class="text-uppercase text-muted fw-bold d-block mb-1.5" style="font-size: 8px; letter-spacing: 0.5px;">Customer Delivery Location</span>
+                <strong class="d-block text-dark small"><i class="bi bi-person-fill text-muted me-1"></i>${state.userProfile.name}</strong>
+                <p class="text-muted small m-0 mt-1 lh-base"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${state.userProfile.address}</p>
+                <span class="text-muted small d-block mt-1.5"><i class="bi bi-telephone-fill text-muted me-1"></i>${state.userProfile.phone}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      ordersListEl.querySelectorAll('.rest-order-action-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget;
+          const orderId = target.getAttribute('data-order-id') || '';
+          const action = target.getAttribute('data-action') || '';
+          
+          const targetOrder = state.orderHistory.find(o => o.id === orderId);
+          if (targetOrder) {
+            if (action === 'accept') {
+              targetOrder.status = 'preparing';
+              targetOrder.trackingStep = 2;
+            } else if (action === 'dispatch') {
+              targetOrder.status = 'dispatched';
+              targetOrder.trackingStep = 3;
+            } else if (action === 'deliver') {
+              targetOrder.status = 'delivered';
+              targetOrder.trackingStep = 4;
+            }
+
+            updateOrderStatusOnServer(orderId, targetOrder.status, targetOrder.trackingStep);
+            saveState();
+            renderRestaurantWorkspace();
+          }
+        });
+      });
+    }
+  }
+
+  const catalogTbody = document.getElementById("rest-menu-catalog-tbody");
+  if (catalogTbody) {
+    catalogTbody.innerHTML = activeRest.menu.map(item => {
+      const isVegIcon = item.isVeg 
+        ? `<i class="bi bi-dot border border-success rounded text-success fs-4 px-0.5 py-0 line-height-1 bg-success bg-opacity-5" title="Veg"></i>` 
+        : `<i class="bi bi-dot border border-danger rounded text-danger fs-4 px-0.5 py-0 line-height-1 bg-danger bg-opacity-5" title="Non-Veg"></i>`;
+
+      return `
+        <tr data-item-id="${item.id}">
+          <td>
+            <div style="width: 40px; height: 40px;" class="bg-light rounded overflow-hidden shrink-0 border">
+              <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80'}" alt="${item.name}" class="w-100 h-100 object-cover" style="object-fit: cover;">
+            </div>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-1.5">
+              ${isVegIcon}
+              <strong class="text-dark d-block" style="font-size: 13.5px;">${item.name}</strong>
+              <span class="badge bg-light border text-muted px-2 py-0.5" style="font-size: 9px;">${item.category}</span>
+            </div>
+            <p class="text-muted small m-0 mt-0.5 line-clamp-1" style="max-width: 320px;">${item.description}</p>
+          </td>
+          <td>
+            <div class="input-group input-group-sm" style="max-width: 90px;">
+              <span class="input-group-text bg-white border-end-0 text-muted px-1.5" style="font-size: 11px;">₹</span>
+              <input type="number" class="form-control text-center py-1 font-sans fw-bold rest-item-price-input" data-id="${item.id}" value="${item.price}" style="font-size: 12px;" />
+            </div>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2.5 rest-delete-item-btn" data-id="${item.id}" style="font-size: 11.5px;">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    catalogTbody.querySelectorAll('.rest-item-price-input').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const target = e.target;
+        const itemId = target.getAttribute('data-id') || '';
+        const newPrice = parseInt(target.value) || 0;
+        
+        if (newPrice > 0) {
+          const dish = activeRest.menu.find(m => m.id === itemId);
+          if (dish) {
+            dish.price = newPrice;
+            updateMenuItemPriceOnServer(activeRest.id, itemId, newPrice);
+            saveState();
+            renderRestaurantWorkspace();
+          }
+        }
+      });
+    });
+
+    catalogTbody.querySelectorAll('.rest-delete-item-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget;
+        const itemId = target.getAttribute('data-id') || '';
+        
+        activeRest.menu = activeRest.menu.filter(m => m.id !== itemId);
+        deleteMenuItemOnServer(activeRest.id, itemId);
+        saveState();
+        renderRestaurantWorkspace();
+      });
+    });
+  }
+
+  
+  const reviewsListEl = document.getElementById("rest-reviews-list");
+  if (reviewsListEl) {
+    const matchedReviews = state.reviews.filter(rev => rev.restaurantId === activeRest.id);
+    if (matchedReviews.length === 0) {
+      reviewsListEl.innerHTML = `
+        <div class="py-5 text-center bg-white border rounded-3 p-4">
+          <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 52px; height: 52px;">
+            <i class="bi bi-star text-muted fs-4"></i>
+          </div>
+          <h6 class="font-display fw-bold text-dark mb-1">No reviews received yet</h6>
+          <p class="text-muted small mx-auto m-0" style="max-width: 320px;">
+            When foodies leave reviews and star ratings for your kitchen, they will show up here.
+          </p>
+        </div>
+      `;
+    } else {
+      reviewsListEl.innerHTML = matchedReviews.map(rev => {
+        let starsHTML = "";
+        const ratingNum = parseInt(rev.rating) || 5;
+        for (let i = 1; i <= 5; i++) {
+          if (i <= ratingNum) {
+            starsHTML += `<i class="bi bi-star-fill text-warning me-1"></i>`;
+          } else {
+            starsHTML += `<i class="bi bi-star text-muted me-1"></i>`;
+          }
+        }
+
+        return `
+          <div class="card border rounded-3 p-4 bg-white shadow-xs mb-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <strong class="text-dark font-sans d-block" style="font-size: 14px;">${rev.customerName || 'Anonymous Nawab'}</strong>
+                <div class="d-flex align-items-center mt-1">
+                  ${starsHTML}
+                  <span class="badge bg-light border text-muted ms-2" style="font-size: 9px;">Verified Buyer</span>
+                </div>
+              </div>
+              <span class="text-muted small" style="font-size: 11px;">
+                <i class="bi bi-calendar2-check me-1"></i> Verified Review
+              </span>
+            </div>
+            <div class="mt-3 bg-light p-3 rounded-3 border-start border-3 border-warning">
+              <p class="text-dark small m-0 lh-base" style="font-style: italic;">
+                "${rev.reviewText}"
+              </p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
